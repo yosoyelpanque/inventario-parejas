@@ -1,16 +1,16 @@
-#rfid-panel {margin:16px 0;padding:18px;background:#f5f8ff;border:1px solid #c7d2fe;border-radius:14px;}
-#rfid-panel h2 {font-size:1.3rem;font-weight:800;color:#312e81;}
+#rfid-panel {margin:16px 0;padding:18px;background:#F5F8F6;border:1px solid #CEDFD7;border-radius:14px;}
+#rfid-panel h2 {font-size:1.3rem;font-weight:800;color:#033E3C;}
 #rfid-panel p {margin:8px 0;font-size:15px;}
-#rfid-panel button {padding:9px 13px;border:1px solid #a5b4fc;background:white;border-radius:8px;color:#312e81;font-weight:700;}
+#rfid-panel button {padding:9px 13px;border:1px solid #9BBDB1;background:white;border-radius:8px;color:#033E3C;font-weight:700;}
 #rfid-panel button:disabled {opacity:.5;}
 .rfid-actions {display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center;}
-#rfid-panel input[type=search],#rfid-panel select {padding:10px;border:1px solid #a5b4fc;border-radius:8px;max-width:100%;background:white;}
+#rfid-panel input[type=search],#rfid-panel select {padding:10px;border:1px solid #9BBDB1;border-radius:8px;max-width:100%;background:white;}
 #rfid-query {flex:1;min-width:180px;}
 #rfid-panel input[type=file] {max-width:100%;font-size:14px;margin:8px 0;}
 #rfid-panel input[type=checkbox] {margin-right:8px;}
-#rfid-preview {border:2px solid #818cf8;padding:14px;border-radius:10px;margin:12px 0;}
-.rfid-card {background:white;border:1px solid #c7d2fe;border-radius:10px;padding:12px;margin:10px 0;overflow-wrap:anywhere;}
+#rfid-preview {border:2px solid #C48D5C;padding:14px;border-radius:10px;margin:12px 0;}
+.rfid-card {background:white;border:1px solid #CEDFD7;border-radius:10px;padding:12px;margin:10px 0;overflow-wrap:anywhere;}
 .rfid-card strong {font:600 14px monospace;}
 .rfid-card label {display:block;margin:12px 0;font-size:15px;}
 .rfid-card details {margin:8px 0;font-size:14px;}
-#rfid-message {min-height:24px;color:#312e81;}
+#rfid-message {min-height:24px;color:#033E3C;}

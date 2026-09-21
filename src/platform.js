@@ -1,7 +1,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const label = document.getElementById('device-status');
-  let saving = 'Datos locales · Trabajo por parejas';
-  const render = () => { label.textContent = 'v1.2.1 · ' + (navigator.onLine ? 'Con conexión' : 'Sin conexión') + ' · ' + saving; };
+  let saving = 'Almacenamiento local';
+  const render = () => { label.textContent = 'v1.3.0 · ' + (navigator.onLine ? 'Con conexión' : 'Sin conexión') + ' · ' + saving; };
   window.addEventListener('online', render);
   window.addEventListener('offline', render);
   window.addEventListener('inventory-save', e => { saving=e.detail; render(); });
@@ -12,7 +12,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if(!registration.waiting||document.getElementById('app-update-button'))return;
       const button=document.createElement('button');button.id='app-update-button';
       button.textContent='Nueva versión disponible · Actualizar';
-      button.style.cssText='display:block;margin:8px auto;padding:10px 16px;background:#4338ca;color:white;border-radius:10px;font-weight:bold';
+      button.style.cssText='display:block;margin:8px auto;padding:10px 16px;background:#03564B;color:white;border-radius:10px;font-weight:bold';
       label.after(button);
       button.onclick=async()=>{
         const form=document.getElementById('adicional-form');

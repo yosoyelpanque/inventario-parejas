@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function getTransfer(){return InventoryOperations.transfer(state,document.getElementById('transfer-from').value,document.getElementById('transfer-to').value,document.getElementById('transfer-location').value,document.getElementById('transfer-name').value);}
     function updateTransferSummary(){
         const box=document.getElementById('transfer-summary');
-        try{const plan=getTransfer();box.textContent=(plan.crossArea?'ATENCIÓN: usuarios de distintas áreas ('+plan.from.area+' → '+plan.to.area+'). ':'')+plan.inventoryCount+' bienes de inventario y '+plan.additionalCount+' adicionales pasarán a '+plan.to.name+'.';box.style.color=plan.crossArea?'#b45309':'';}
+        try{const plan=getTransfer();box.textContent=(plan.crossArea?'ATENCIÓN: usuarios de distintas áreas ('+plan.from.area+' → '+plan.to.area+'). ':'')+plan.inventoryCount+' bienes de inventario y '+plan.additionalCount+' adicionales pasarán a '+plan.to.name+'.';box.style.color=plan.crossArea?'#A35C2B':'';}
         catch(error){box.textContent=error.message;box.style.color='';}
     }
     document.getElementById('transfer-from').onchange=updateTransferLocations;
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const areasLoaded = Object.keys(state.areaNames || {}).sort();
         const infoDiv = document.getElementById('header-area-info'); const progSpan = document.getElementById('header-progress');
         if(areasLoaded.length > 0) { const baseArea = areasLoaded[0]; infoDiv.textContent = `Área Base: ${baseArea} - ${cleanAreaName(baseArea, state.areaNames[baseArea])}`; infoDiv.classList.remove('hidden'); } else { infoDiv.classList.add('hidden'); }
-        if (state.inventory && state.inventory.length > 0) { const ubicados = state.inventory.filter(i => i.UBICADO === 'SI').length; const pct = Math.round((ubicados / state.inventory.length) * 100) || 0; if(progSpan) { progSpan.innerHTML = `<i class="fa-solid fa-chart-pie mr-1"></i> ${pct}% Auditado`; progSpan.classList.remove('hidden'); } } else if(progSpan) { progSpan.classList.add('hidden'); }
+        if (state.inventory && state.inventory.length > 0) { const ubicados = state.inventory.filter(i => i.UBICADO === 'SI').length; const pct = Math.round((ubicados / state.inventory.length) * 100) || 0; if(progSpan) { progSpan.innerHTML = `<progress max="100" value="${pct}" aria-label="Avance de verificación"></progress><span>${pct}% verificado</span>`; progSpan.classList.remove('hidden'); } } else if(progSpan) { progSpan.classList.add('hidden'); }
     }
 
     function renderResponsablesSettings() {
@@ -414,6 +414,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (tab === 'notas') { globalSearch.placeholder = 'Nota, clave o descripción...'; globalSearch.disabled = false; window.currentNotesPage=1; invActions.classList.add('hidden'); renderNotasTab(); }
         else if (tab === 'reportes') { globalSearch.placeholder = 'Reporte, área o resguardante...'; globalSearch.disabled = false; invActions.classList.add('hidden'); populateReportFilters();populateReviewAreas();renderReportSearch(); }
         else if (tab === 'settings') { globalSearch.placeholder = 'No disponible aquí'; globalSearch.disabled = true; invActions.classList.add('hidden'); renderResponsablesSettings(); renderLoadedListings(); renderRecoveryPoints(); renderMagicProfiles();renderSessionHistory(); }
+        const activeNav=document.querySelector('.tab-btn.active'),nav=document.getElementById('tabs-container');
+        if(activeNav && nav.scrollWidth>nav.clientWidth)nav.scrollLeft=activeNav.offsetLeft-nav.offsetLeft-12;
         updateBanner(); if(tab==='inventory') filterAndRenderInventory(); if(tab==='users') {renderUsers();populateTransferUsers();} if(tab==='adicionales') { populateFilters(); renderAdicionales(); toggleAdicFormFields('ad'); document.getElementById('ad-serie').focus(); } else focusSearch();
     }
     document.getElementById('tabs-container').onclick = e => { if(e.target.closest('#toggle-header-btn') || e.target.closest('#nav-inventory-actions') || e.target.closest('#global-search-input')) return; const btn = e.target.closest('.tab-btn'); if(btn) { changeTab(btn.dataset.tab); window.scrollTo(0,0); } };

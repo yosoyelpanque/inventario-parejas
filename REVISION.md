@@ -57,3 +57,12 @@ Pendiente: pruebas con archivos anonimizados reales y cámara, lector e impresor
 ## Auditor individual y regreso — versión 1.2.1
 
 Compañero opcional: dejar vacío o pulsar Sin compañero. Los nuevos registros y Excel conservan Auxiliado por vacío; el intercambio se oculta. Cambiar pareja abre la selección con los auditores actuales y Regresar vuelve a la misma pestaña sin aplicar ediciones ni recargar. Se verifica sesión individual tras recarga, captura, regreso con cambios descartados, vuelta a pareja e intercambio. 32 pruebas unitarias correctas, una omitida por archivos externos ausentes; regresión de navegador sin errores.
+
+## Paleta institucional y experiencia de uso — versión 1.3.0
+
+- Paleta de las referencias del usuario: verde #03564B, verde oscuro #033E3C, verde #006847, cobre #C48D5C y #A35C2B, crema #FFF7D2 y vino #721738. Rojo reservado para errores y acciones destructivas. Tokens centralizados en styles/theme.css y utilidades generadas con Tailwind.
+- Cabecera compacta, indicadores en una sola franja y progreso de verificación. Navegación verde con pestaña activa diferenciada; buscador y carga de Excel en una barra independiente.
+- Filtros con etiquetas visibles y acciones de inventario con texto. Formularios, ventanas y selección de auditores comparten tipografía, bordes, colores y foco de teclado.
+- En móvil la cabecera deja de ocupar permanentemente la pantalla; las pestañas se desplazan hasta la activa y la tabla conserva columnas legibles mediante desplazamiento horizontal dentro de su contenedor.
+- El concepto visual se implementó conservando el logotipo institucional original, las columnas reales del inventario y los controles existentes. Las imágenes y los datos del concepto eran ilustrativos. Los formatos oficiales de impresión y las claves del almacenamiento se conservan.
+- Validación: build correcto, 32 pruebas unitarias correctas y una omitida por archivos externos ausentes. Edge/Playwright: seis apartados en 1536×1024 y 390×844, detalle del bien, selección de auditores, captura individual/en pareja, búsquedas, notas, reportes, Excel, RFID, funcionamiento sin conexión, restauración y recuperación atómica. Sin errores de consola en los recorridos. Revisión visual del concepto frente a las pantallas finales, sin desbordamiento de página en móvil. Cámara, lector e impresora físicos siguen fuera de esta validación.
