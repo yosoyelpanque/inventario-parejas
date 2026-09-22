@@ -33,7 +33,6 @@
  .workspace-toolbar>.relative{order:0;flex:1;min-width:220px;width:auto}
  #global-search-input{font-size:15px;font-weight:400;min-height:46px;border:1px solid #BDCFC5;border-radius:8px;background:white;box-shadow:none}
  #global-search-input:focus{border-color:var(--green);outline:2px solid #00684728}
- .workspace-toolbar>#upload-btn{order:1;flex:0 0 auto;background:var(--brand);border-radius:8px;box-shadow:none;font-size:14px;padding:12px 18px;min-height:44px}
  #nav-inventory-actions{order:2;width:100%;justify-content:flex-start;gap:6px}
  #nav-inventory-actions.hidden{display:none}
  #nav-inventory-actions button{gap:6px;width:auto;height:36px;padding:8px 12px;border-radius:6px;box-shadow:none;background:#F2F5F3;color:var(--brand);font-size:12px;min-height:36px}
@@ -80,7 +79,6 @@
  #rfid-panel{background:#F5F8F6;border-color:var(--line)}
  :where(button,input,select,textarea,summary):focus-visible{outline:3px solid var(--copper);outline-offset:3px}
  button:disabled{cursor:not-allowed}input[type=checkbox],input[type=radio]{accent-color:var(--green)}
- @media(min-width:1250px){.workspace-toolbar>.relative{min-width:280px}#nav-inventory-actions{width:auto;order:1}.workspace-toolbar>#upload-btn{order:2}}
  @media(max-width:900px){#main-header{align-items:flex-start}#main-header>div:last-child{justify-content:flex-start}.team-indicator{max-width:100%}#tabs-container .tab-btn{padding:10px 14px;font-size:13px}.workspace-toolbar{padding:10px 12px}#main-content-area{padding:16px}#active-user-banner>div{align-items:flex-start}}
  @media(max-width:600px){
   #app-container{padding:10px 8px 24px}#main-header{padding:14px;margin-bottom:10px;gap:12px}#main-header h2{font-size:21px}#main-header img{height:38px;margin-right:12px}
@@ -90,7 +88,6 @@
   #tabs-container{border-radius:8px 8px 0 0;gap:2px}#tabs-container .tab-btn{padding:10px 12px;font-size:12px;min-height:40px}
   #tabs-container .tab-btn i{font-size:12px}#toggle-header-btn{width:28px;height:28px}
   .workspace-toolbar{gap:8px;padding:10px}.workspace-toolbar>.relative{min-width:0;flex:1}#global-search-input{font-size:14px;min-height:44px}
-  .workspace-toolbar>#upload-btn{padding:10px;min-height:44px;font-size:0}.workspace-toolbar>#upload-btn i{font-size:18px;margin:0}
   #nav-inventory-actions{flex-wrap:wrap;gap:4px}#nav-inventory-actions button{font-size:11px;padding:6px 8px;min-height:32px;height:32px}#nav-inventory-actions button i{font-size:12px}
   #active-user-banner{padding:8px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}#active-user-banner.hidden{display:none}#active-user-banner>div{gap:6px}#active-user-banner-name{font-size:12px}#active-user-banner-area{font-size:10px}#active-user-banner-tag{display:none}#deactivate-user-btn{font-size:10px;padding:6px;align-self:end}
   #main-content-area{padding:12px;margin-top:12px;border-radius:10px}#main-content-area h3{font-size:18px}.area-review{padding:14px}.review-controls{gap:8px}.review-controls label{min-width:140px}
@@ -98,7 +95,10 @@
   #registered-users-list>div>div:last-child{grid-template-columns:minmax(80px,1.5fr) repeat(3,minmax(0,1fr));gap:6px}#registered-users-list button{padding:10px 7px!important}
   #notas-tab>div:nth-child(2){align-items:flex-start;gap:10px;flex-wrap:wrap}#print-notas-btn{font-size:12px}
   .team-card{padding:24px 20px;margin:14px auto}.team-card h1{font-size:27px}.team-logo{height:48px}
- .sticky-header{position:static} /* Avoid trapping the table beneath a tall header on phones. */
+ .sticky-header{display:contents}
+ #tabs-container{position:sticky;top:0;z-index:50;border-radius:0;box-shadow:0 4px 12px #033e3c20}
+ #main-header #change-team-btn{grid-column:1;grid-row:4}
+ #main-header #upload-btn{grid-column:2;grid-row:4}
   #device-status,#backup-status{font-size:10px}
  }
 }

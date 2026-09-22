@@ -848,6 +848,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!items.length){const empty=document.createElement('p');empty.textContent='No hay bienes que coincidan en esta lista.';list.append(empty);}
         document.getElementById('retag-more').hidden=items.length<=retagLimit;
     }
+    document.getElementById('retag-toggle').onclick=()=>{
+        const content=document.getElementById('retag-content'),button=document.getElementById('retag-toggle');
+        content.hidden=!content.hidden;
+        button.setAttribute('aria-expanded',String(!content.hidden));
+        button.innerHTML=content.hidden?'Expandir <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>':'Contraer <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>';
+    };
     document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagLimit=30;renderRetagList();};
     document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagLimit=30;renderRetagList();};
     document.getElementById('retag-search').oninput=()=>{retagLimit=30;renderRetagList();};
