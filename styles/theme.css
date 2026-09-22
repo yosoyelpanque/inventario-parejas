@@ -95,7 +95,7 @@
   #active-user-banner{padding:8px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}#active-user-banner.hidden{display:none}#active-user-banner>div{gap:6px}#active-user-banner-name{font-size:12px}#active-user-banner-area{font-size:10px}#active-user-banner-tag{display:none}#deactivate-user-btn{font-size:10px;padding:6px;align-self:end}
   #main-content-area{padding:12px;margin-top:12px;border-radius:10px}#main-content-area h3{font-size:18px}.area-review{padding:14px}.review-controls{gap:8px}.review-controls label{min-width:140px}
   .inventory-filters{grid-template-columns:1fr 1fr;gap:8px}.inventory-filters label:last-child{grid-column:1/-1}.inventory-heading{align-items:flex-start;flex-direction:column;gap:8px}.inventory-controls{margin-bottom:14px}
-  #registered-users-list>div>div:last-child{grid-template-columns:minmax(80px,1.5fr) repeat(4,minmax(0,1fr));gap:6px}#registered-users-list button{padding:10px 7px!important}
+  #registered-users-list>div>div:last-child{grid-template-columns:minmax(80px,1.5fr) repeat(3,minmax(0,1fr));gap:6px}#registered-users-list button{padding:10px 7px!important}
   #notas-tab>div:nth-child(2){align-items:flex-start;gap:10px;flex-wrap:wrap}#print-notas-btn{font-size:12px}
   .team-card{padding:24px 20px;margin:14px auto}.team-card h1{font-size:27px}.team-logo{height:48px}
  .sticky-header{position:static} /* Avoid trapping the table beneath a tall header on phones. */

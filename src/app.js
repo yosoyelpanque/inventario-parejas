@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nombreArea = cleanAreaName(u.area, NOMBRES_AREAS[u.area] || 'Área Desconocida'); const isActive = state.activeResguardante?.id === u.id; const btnText = isActive ? '<i class="fa-solid fa-user-check mr-1"></i>Activo' : 'Activar';
             const userLocations=[...new Set((u.locations||[u.locationWithId]).filter(Boolean))];
             const locTags=userLocations.length?`<span class="user-location-summary" title="${escapeHTML(userLocations.join(' / '))}"><span>${escapeHTML(userLocations[0])}</span>${userLocations.length>1?`<b>+${userLocations.length-1} más</b>`:''}</span>`:'';
-            return `<div class="flex flex-col md:flex-row justify-between items-start md:items-center p-3 border rounded-xl bg-white shadow-sm mb-2 ${isActive ? 'border-green-500 bg-green-50 ring-2 ring-green-200' : 'hover:border-indigo-300'}"><div class="cursor-pointer mb-3 md:mb-0 w-full md:flex-1 min-w-0 pr-2" onclick="showUserDetail(${inlineValue(u.id)})"><p class="font-bold text-base text-gray-800 truncate" title="${escapeHTML(u.name)}">${escapeHTML(u.name)}</p><p class="text-sm text-gray-500 font-medium truncate"><i class="fa-solid fa-briefcase mr-1"></i>Área ${escapeHTML(u.area)} - ${escapeHTML(nombreArea)}</p><div class="mt-1 flex flex-col gap-0.5 w-full">${locTags}</div></div><div class="flex flex-shrink-0 flex-wrap gap-2 w-full md:w-auto grid grid-cols-5 md:flex items-center"><button data-action="save" class="w-full md:w-auto py-2.5 px-4 font-bold rounded-xl text-sm" onclick="activateUser(${inlineValue(u.id)})">${btnText}</button><button data-action="edit" type="button" class="w-full md:w-auto py-2.5 px-3 rounded-xl text-sm" onclick="showUserDetail(${inlineValue(u.id)})" title="Ver y editar ubicaciones" aria-label="Ver y editar ubicaciones"><i class="fa-solid fa-location-dot"></i></button><button data-action="photo" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Foto" onclick="showPhoto('user', ${inlineValue(u.id)})"><i class="fa-solid fa-camera"></i></button><button data-action="edit" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Editar" onclick="openEditUser(${inlineValue(u.id)})"><i class="fa-solid fa-pencil"></i></button><button data-action="danger" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Eliminar" onclick="deleteUser(${inlineValue(u.id)})"><i class="fa-solid fa-trash"></i></button></div></div>`
+            return `<div class="flex flex-col md:flex-row justify-between items-start md:items-center p-3 border rounded-xl bg-white shadow-sm mb-2 ${isActive ? 'border-green-500 bg-green-50 ring-2 ring-green-200' : 'hover:border-indigo-300'}"><div class="cursor-pointer mb-3 md:mb-0 w-full md:flex-1 min-w-0 pr-2" onclick="showUserDetail(${inlineValue(u.id)})"><p class="font-bold text-base text-gray-800 truncate" title="${escapeHTML(u.name)}">${escapeHTML(u.name)}</p><p class="text-sm text-gray-500 font-medium truncate"><i class="fa-solid fa-briefcase mr-1"></i>Área ${escapeHTML(u.area)} - ${escapeHTML(nombreArea)}</p><div class="mt-1 flex flex-col gap-0.5 w-full">${locTags}</div></div><div class="flex flex-shrink-0 flex-wrap gap-2 w-full md:w-auto grid grid-cols-4 md:flex items-center"><button data-action="save" class="w-full md:w-auto py-2.5 px-4 font-bold rounded-xl text-sm" onclick="activateUser(${inlineValue(u.id)})">${btnText}</button><button data-action="photo" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Foto" onclick="showPhoto('user', ${inlineValue(u.id)})"><i class="fa-solid fa-camera"></i></button><button data-action="edit" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Editar" onclick="openEditUser(${inlineValue(u.id)})"><i class="fa-solid fa-pencil"></i></button><button data-action="danger" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Eliminar" onclick="deleteUser(${inlineValue(u.id)})"><i class="fa-solid fa-trash"></i></button></div></div>`
         }).join('');
     }
 
@@ -817,6 +817,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         finally {button.disabled=false;}
     };
 
+    let retagArchived=false, retagLimit=30, retagSaving=false;
+    function renderRetagList(){
+        const items=InventoryRetag.list(state,retagArchived,document.getElementById('retag-search').value);
+        document.getElementById('retag-pending').setAttribute('aria-pressed',String(!retagArchived));
+        document.getElementById('retag-done').setAttribute('aria-pressed',String(retagArchived));
+        document.getElementById('retag-count').textContent=items.length+' bienes '+(retagArchived?'etiquetados':'pendientes de reetiquetar');
+        const list=document.getElementById('retag-list');list.replaceChildren();
+        for(const item of items.slice(0,retagLimit)){
+            const row=document.createElement('article'),info=document.createElement('div'),title=document.createElement('strong'),detail=document.createElement('p'),actions=document.createElement('div'),open=document.createElement('button'),done=document.createElement('button');
+            const key=item['CLAVE UNICA'];title.textContent=key+' · '+(item.DESCRIPCION||item.DESCRripcion||'Sin descripción');
+            detail.textContent=(item['NOMBRE DE USUARIO']||'Sin asignar')+' · '+(item.ubicacionEspecifica||'Sin ubicación')+' · Serie: '+(item.SERIE||'Sin serie');
+            info.append(title,detail);
+            if(retagArchived){const stamp=document.createElement('p');stamp.textContent='Etiquetado: '+new Date(item.etiquetadoCompletado.at).toLocaleString('es-MX')+' · '+item.etiquetadoCompletado.por;info.append(stamp);}
+            actions.className='retag-actions';open.type=done.type='button';open.dataset.action='info';open.textContent='Ver bien';open.onclick=()=>showInvDetail(key);
+            done.dataset.action=retagArchived?'edit':'save';done.textContent=retagArchived?'Volver a pendientes':'Ya etiquetado · Archivar';done.disabled=retagSaving;
+            const reopen=retagArchived;
+            done.onclick=async()=>{
+                if(retagSaving)return;retagSaving=true;renderRetagList();document.getElementById('loading-overlay').classList.add('show');
+                try{
+                    const next=reopen?InventoryRetag.reopen(state,key):InventoryRetag.complete(state,key,state.currentUser?.name);
+                    await photoDB.setItem('appData','mainState',InventoryData.clean(next));
+                    saveSnapshot(reopen?'Reabrir reetiquetado':'Confirmar etiqueta colocada');state=next;
+                    filterAndRenderInventory();showToast(reopen?'Bien devuelto a pendientes':'Etiquetado y archivado','success');
+                }catch(error){showToast(error.message,'error');}
+                finally{retagSaving=false;document.getElementById('loading-overlay').classList.remove('show');renderRetagList();}
+            };
+            actions.append(open,done);row.append(info,actions);list.append(row);
+        }
+        if(!items.length){const empty=document.createElement('p');empty.textContent='No hay bienes que coincidan en esta lista.';list.append(empty);}
+        document.getElementById('retag-more').hidden=items.length<=retagLimit;
+    }
+    document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagLimit=30;renderRetagList();};
+    document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagLimit=30;renderRetagList();};
+    document.getElementById('retag-search').oninput=()=>{retagLimit=30;renderRetagList();};
+    document.getElementById('retag-more').onclick=()=>{retagLimit+=30;renderRetagList();};
+
     window.viewArchivedNotes = false;
     window.currentNotesPage = 1;
     const notesPerPage = 6;
@@ -835,6 +871,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return InventorySearch.notes(state,window.viewArchivedNotes,query);
     }
     window.renderNotasTab = function() {
+        renderRetagList();
         const container = document.getElementById('notas-list-container'); const pagContainer = document.getElementById('notas-pagination-container'); if(!state.archivedNotes) state.archivedNotes = {};
         const targetObj = window.viewArchivedNotes ? state.archivedNotes : state.notes; const keys = filteredNoteKeys();
         for(const key of selectedNotes)if(!keys.includes(key))selectedNotes.delete(key);
@@ -914,8 +951,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     function deletePhotoFromModal(type, id) { showConfirm('Eliminar Foto', '¿Eliminar y tomar nueva?', () => { photoDB.db.transaction(['photos'], 'readwrite').objectStore('photos').delete(`${type}-${id}`); if(type === 'inventory') { delete state.photos[id]; document.getElementById('detail-view-photo').classList.add('hidden'); document.getElementById('delete-active-photo-btn').classList.add('hidden'); document.getElementById('detail-view-no-photo').classList.remove('hidden'); } else if (type === 'additional') { delete state.additionalPhotos[id]; document.getElementById('ad-det-photo').classList.add('hidden'); document.getElementById('ad-delete-photo-btn').classList.add('hidden'); document.getElementById('ad-det-no-photo').classList.remove('hidden'); } saveState(); filterAndRenderInventory(); renderAdicionales(); setTimeout(() => showPhoto(type, id), 200); }); }
     document.getElementById('delete-active-photo-btn').onclick = () => { deletePhotoFromModal('inventory', document.getElementById('detail-view-clave').textContent); }; document.getElementById('ad-delete-photo-btn').onclick = () => { deletePhotoFromModal('additional', document.getElementById('ad-det-foto-btn').dataset.id); };
 
-    document.getElementById('nav-qr-scan-btn').onclick = () => { document.getElementById('qr-modal').classList.add('show'); if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader"); html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: {width: 250, height: 250} }, (t) => { html5QrCode.stop().then(() => { document.getElementById('qr-modal').classList.remove('show'); showToast('QR Detectado', 'success'); applySearch(t); }); }, (e) => {}).catch(e => { showToast('Error cámara', 'error'); document.getElementById('qr-modal').classList.remove('show'); }); };
-    document.getElementById('qr-close-btn').onclick = () => { if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().then(() => { document.getElementById('qr-modal').classList.remove('show'); }); else document.getElementById('qr-modal').classList.remove('show'); };
+    let scanSession = 0, scannerStarting = false;
+    async function closeCodeScanner() {
+        ++scanSession;
+        document.getElementById('qr-modal').classList.remove('show');
+        if (html5QrCode?.isScanning) await html5QrCode.stop().catch(() => {});
+    }
+    async function startCodeScanner(onRead) {
+        if (scannerStarting || html5QrCode?.isScanning) return;
+        const session = ++scanSession;
+        scannerStarting = true;
+        document.getElementById('qr-modal').classList.add('show');
+        if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+        let detected = false;
+        try {
+            await html5QrCode.start({ facingMode:'environment' }, { fps:10 }, async text => {
+                if (detected || session !== scanSession) return;
+                detected = true;
+                await closeCodeScanner();
+                onRead(text.trim());
+                showToast('Código detectado', 'success');
+            }, () => {});
+            if (session !== scanSession && html5QrCode.isScanning) await html5QrCode.stop();
+        } catch {
+            if (session === scanSession) { await closeCodeScanner(); showToast('No se pudo abrir la cámara. Revisa el permiso o escribe la serie.', 'error'); }
+        } finally { scannerStarting = false; }
+    }
+    document.getElementById('nav-qr-scan-btn').onclick = () => startCodeScanner(applySearch);
+    document.getElementById('qr-close-btn').onclick = closeCodeScanner;
+    for (const prefix of ['ad','edit-ad']) document.getElementById(prefix+'-scan-serie').onclick = () => startCodeScanner(text => {
+        const input=document.getElementById(prefix+'-serie');input.value=text;
+        input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));input.focus();
+    });
+
 
     // --- PESTAÑA REPORTES OPTIMIZADA CON ÁLBUM ---
     document.getElementById('rep-type-select').onchange = (e) => {
@@ -1357,7 +1425,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('restore-cancel').onclick=()=>document.getElementById('restore-backup-dialog').close();
     document.getElementById('restore-backup-dialog').addEventListener('cancel',event=>{if(document.getElementById('restore-confirm').disabled)event.preventDefault();});
     document.getElementById('clear-session-btn').onclick = () => { showConfirm('¡PELIGRO! Borrar Todo', 'Esto eliminará todo el inventario, FOTOS y el catálogo RFID de este navegador.', () => { document.getElementById('loading-overlay').classList.add('show'); try { if(photoDB.db) { photoDB.db.close(); } const req = indexedDB.deleteDatabase(photoDB.name); req.onsuccess = () => window.location.reload(); req.onerror = () => { window.location.reload(); }; req.onblocked = () => { window.location.reload(); }; } catch(e) { window.location.reload(); } }); };
-    document.querySelectorAll('.modal-overlay .fa-xmark, button[id$="-cancel-btn"], button[id$="-close-btn"]').forEach(b => b.onclick = e => { e.target.closest('.modal-overlay').classList.remove('show'); stopCamera(); if (html5QrCode && html5QrCode.isScanning) { html5QrCode.stop().catch(err => {}); } focusSearch(); });
+    document.querySelectorAll('.modal-overlay .fa-xmark, button[id$="-cancel-btn"], button[id$="-close-btn"]').forEach(b => { if(b.id==='qr-close-btn') return; b.onclick = e => { e.target.closest('.modal-overlay').classList.remove('show'); stopCamera(); if (html5QrCode && html5QrCode.isScanning) { html5QrCode.stop().catch(err => {}); } focusSearch(); }; });
 
     async function openWorkspace(team) {
         if(state.loggedIn){
