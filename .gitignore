@@ -9,3 +9,9 @@ outputs/
 *.xlsm
 ADICIONALES.md
 AVANCE-SISTEMA.md
+
+www/
+/android/
+*.apk
+*.jks
+*.keystore

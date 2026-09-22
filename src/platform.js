@@ -1,12 +1,12 @@
 window.addEventListener('DOMContentLoaded', () => {
   const label = document.getElementById('device-status');
   let saving = 'Almacenamiento local';
-  const render = () => { label.textContent = 'v1.3.2 · ' + (navigator.onLine ? 'Con conexión' : 'Sin conexión') + ' · ' + saving; };
+  const render = () => { label.textContent = 'v1.4.0 · ' + (navigator.onLine ? 'Con conexión' : 'Sin conexión') + ' · ' + saving; };
   window.addEventListener('online', render);
   window.addEventListener('offline', render);
   window.addEventListener('inventory-save', e => { saving=e.detail; render(); });
   render();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').then(registration=>{
+  if (!window.InventoryOutput?.native && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').then(registration=>{
     let applying=false;
     const offer=()=>{
       if(!registration.waiting||document.getElementById('app-update-button'))return;

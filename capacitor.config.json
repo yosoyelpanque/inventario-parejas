@@ -1,0 +1,7 @@
+{
+  "appId": "io.github.yosoyelpanque.inventarios",
+  "appName": "Control de inventarios",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "android": { "allowMixedContent": false, "backgroundColor": "#F5F4F0" }
+}

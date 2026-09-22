@@ -1,0 +1,25 @@
+/* Action semantics are independent of the institutional navigation palette. */
+@media screen {
+  button[data-action] { background:var(--action-bg)!important; color:var(--action-ink)!important; border-color:var(--action-border)!important; background-image:none!important; }
+  button[data-action="save"] { --action-bg:#006847; --action-ink:#fff; --action-border:#03564B; }
+  button[data-action="edit"] { --action-bg:#FFE0B2; --action-ink:#783900; --action-border:#D18A35; }
+  button[data-action="danger"] { --action-bg:#B42332; --action-ink:#fff; --action-border:#941B28; }
+  button[data-action="note"] { --action-bg:#FFF1A8; --action-ink:#624B00; --action-border:#C5A52E; }
+  button[data-action="photo"] { --action-bg:#D8EFFF; --action-ink:#124B70; --action-border:#83BADF; }
+  button[data-action="info"] { --action-bg:#E7E9F5; --action-ink:#354168; --action-border:#ACB3D0; }
+  button[data-action="neutral"] { --action-bg:#F0F1F3; --action-ink:#374151; --action-border:#C7CCD2; }
+  button[data-action]:hover:not(:disabled) { filter:brightness(.95); }
+  button[data-action][aria-pressed="true"] { box-shadow:inset 0 -3px #03564B; font-weight:800; }
+  button[data-action]:disabled { opacity:.55; cursor:not-allowed; }
+  button[data-action]:focus-visible { outline:3px solid #A35C2B; outline-offset:3px; }
+  #item-detail-view-modal main>div:first-child { gap:14px; }
+  #detail-view-photo-container { flex-grow:0; height:260px; flex-shrink:0; }
+  #detail-view-auditor-container { margin:0; font-size:14px; }
+  #detail-view-auditor { font-size:16px; overflow-wrap:anywhere; }
+  .asset-flags { display:flex; gap:8px; flex-wrap:wrap; }
+  .asset-flags>span { padding:5px 9px; border-radius:6px; font-size:12px; }
+  .asset-flags [hidden] { display:none; }
+  #detail-retag-flag { background:#FFE0B2; color:#783900; }
+  #detail-area-flag { background:#FFF1A8; color:#624B00; }
+  @media(max-width:767px) { #detail-view-photo-container { height:180px; } }
+}
