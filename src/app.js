@@ -849,13 +849,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!items.length){const empty=document.createElement('p');empty.textContent='No hay bienes que coincidan en esta lista.';list.append(empty);}
         document.getElementById('retag-more').hidden=items.length<=retagLimit;
     }
-    document.getElementById('retag-toggle').onclick=()=>{
-        const content=document.getElementById('retag-content'),button=document.getElementById('retag-toggle');
-        content.hidden=!content.hidden;
-        button.setAttribute('aria-expanded',String(!content.hidden));
-        button.innerHTML=content.hidden?'<span class="collapse-word">Expandir</span><span class="collapse-triangle" aria-hidden="true"></span>':'<span class="collapse-word">Contraer</span><span class="collapse-triangle" aria-hidden="true"></span>';
-        button.setAttribute('aria-label',content.hidden?'Expandir bienes para reetiquetar':'Contraer bienes para reetiquetar');
-    };
     document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagLimit=30;renderRetagList();};
     document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagLimit=30;renderRetagList();};
     document.getElementById('retag-search').oninput=()=>{retagLimit=30;renderRetagList();};

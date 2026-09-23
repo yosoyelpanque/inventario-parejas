@@ -22,9 +22,6 @@
   #ad-det-auditor { font-size:16px; overflow-wrap:anywhere; }
   .additional-inline input { min-width:0; }
   #ad-scan-serie,#edit-ad-scan-serie { min-width:44px; padding:10px; }
-  .retag-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
-  #retag-toggle { padding:8px 12px; border-radius:8px; min-height:40px; }
-  #retag-content[hidden] { display:none; }
   #retag-list article { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid #DCE3DE; padding:14px 0; }
   #retag-list article>div { min-width:0; overflow-wrap:anywhere; }
   #retag-list button { padding:10px 14px; border-radius:8px; }

@@ -2,11 +2,12 @@
 document.addEventListener('DOMContentLoaded',()=>{
  const $=id=>document.getElementById(id),mobile=matchMedia('(max-width:600px)');
  function collapsible(container,heading,children,key,collapsed=false){
-  const body=document.createElement('div');body.id=key+'-content';body.className='mobile-collapse-content';
-  children.forEach(node=>body.append(node));container.append(body);
-  const button=document.createElement('button');button.type='button';button.className='mobile-collapse-toggle';button.dataset.action='neutral';button.setAttribute('aria-controls',body.id);
-  const render=()=>{const shut=mobile.matches&&collapsed;body.hidden=shut;button.setAttribute('aria-expanded',String(!shut));button.setAttribute('aria-label',(shut?'Expandir ':'Contraer ')+heading.textContent.trim());button.innerHTML='<span class="collapse-triangle" aria-hidden="true"></span>';};
-  heading.classList.add('mobile-collapse-heading');heading.append(button);button.onclick=()=>{collapsed=!collapsed;render();};mobile.addEventListener('change',render);render();
+  const details=document.createElement('details'),summary=document.createElement('summary'),body=document.createElement('div');
+  details.id=key+'-panel';details.className='mobile-collapsible';body.id=key+'-content';body.className='mobile-collapse-content';
+  children.forEach(node=>body.append(node));container.prepend(details);summary.append(heading);details.append(summary,body);
+  const render=()=>{details.open=!mobile.matches||!collapsed;};
+  summary.addEventListener('click',event=>{event.preventDefault();if(mobile.matches){collapsed=details.open;render();}});
+  mobile.addEventListener('change',render);render();
  }
  const users=$('user-name').closest('.space-y-4'),userPanel=users.parentElement;
  collapsible(userPanel,userPanel.querySelector('h3'),[users],'register-user');
@@ -15,7 +16,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  const filters=document.querySelector('.inventory-filters'),controls=filters.parentElement,heading=controls.querySelector('h3');
  // Insert before action buttons, preserving their visibility when filters are collapsed.
  collapsible(controls,heading,[controls.querySelector('.inventory-history'),filters],'inventory-filters',true);
- controls.insertBefore($('inventory-filters-content'),$('nav-inventory-actions'));
+ controls.querySelector('.inventory-heading').remove();
  const actions=$('nav-inventory-actions'),actionMarker=document.createComment('inventory-actions-position');actions.before(actionMarker);
  const top=$('backup-status'),version=$('device-status'),topMarker=document.createComment('status-position');top.before(topMarker);
  const footer=document.createElement('footer');footer.id='mobile-status-footer';$('app-container').after(footer);
