@@ -4,8 +4,7 @@ const root=path.resolve(__dirname,'..');process.chdir(root);
 const target=path.join(root,'www');fs.mkdirSync(target,{recursive:true});
 for(const name of ['index.html','manifest.json','logo.png','icon-192x192.png','icon-512x512.png','src','styles','vendor'])
  fs.cpSync(path.join(root,name),path.join(target,name),{recursive:true});
-const html=fs.readFileSync(path.join(target,'index.html'),'utf8').replace('<script src="src/output.js">','<script src="capacitor.js"></script>\n<script src="src/output.js">');
-fs.writeFileSync(path.join(target,'index.html'),html);
+// BridgeActivity injects the native bridge and plugin proxies before page scripts.
 const cli=path.join(root,'node_modules/@capacitor/cli/bin/capacitor');
 function cap(...args){cp.execFileSync(process.execPath,[cli,...args],{stdio:'inherit'});}
 if(!fs.existsSync('android'))cap('add','android');
@@ -17,7 +16,7 @@ let xml=fs.readFileSync(manifest,'utf8').replace('android:allowBackup="true"','a
 if(!xml.includes('android.permission.CAMERA'))xml=xml.replace('</manifest>','<uses-permission android:name="android.permission.CAMERA" />\n<uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>');
 fs.writeFileSync(manifest,xml);
 const gradle='android/app/build.gradle';
-let build=fs.readFileSync(gradle,'utf8').replace(/versionCode \d+/,'versionCode 10403').replace(/versionName "[^"]+"/,'versionName "1.4.3"');
+let build=fs.readFileSync(gradle,'utf8').replace(/versionCode \d+/,'versionCode 10404').replace(/versionName "[^"]+"/,'versionName "1.4.4"');
 fs.writeFileSync(gradle,build);
 // Reuse the existing application icon rather than the Capacitor template icon.
 for(const density of ['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi']){

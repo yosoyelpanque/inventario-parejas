@@ -24,8 +24,8 @@
   const savedAttribution = item => Object.fromEntries(Object.keys(clear()).map(key => [key, item[key] || '']));
   const label = name => name || 'Sin registro';
   const excel = item => ({'Ubicado Por':item.ubicadoPor || '', 'Auxiliado Por':item.auxiliadoPor || ''});
-  function remember(team) { sessionStorage.setItem(SESSION, JSON.stringify(pair(team.active, team.companion))); }
-  function forget() { sessionStorage.removeItem(SESSION); }
+  function remember(team) { localStorage.setItem(SESSION, JSON.stringify(pair(team.active, team.companion))); }
+  function forget() { sessionStorage.removeItem(SESSION); localStorage.removeItem(SESSION); }
   function validateDirectory(entries) {
     if (!Array.isArray(entries)) throw Error('El catálogo de auditores no es válido.');
     const seen = new Set();
@@ -120,8 +120,8 @@
     };
     render();
     try {
-      const saved = JSON.parse(sessionStorage.getItem(SESSION) || 'null');
-      if (saved) await open(pair(saved.active,saved.companion));
+      const saved = JSON.parse(localStorage.getItem(SESSION) || sessionStorage.getItem(SESSION) || 'null');
+      if (saved) { const team=pair(saved.active,saved.companion); await open(team); remember(team); }
     } catch(error) { forget(); status.textContent = 'Selecciona la pareja para continuar. ' + error.message; }
   }
   root.InventoryTeam = {person, pair, swap, attribution, clear, savedAttribution, label, excel, remember, forget, mount, validateDirectory, exportDirectory};

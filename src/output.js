@@ -1,7 +1,13 @@
 /* Shared output boundary: browser downloads or Android's document picker. */
 (function () {
   const native = !!window.Capacitor?.isNativePlatform();
-  const plugin = native ? window.Capacitor.registerPlugin('InventoryFiles') : null;
+  let registered;
+  function getPlugin() {
+    const cap=window.Capacitor;
+    const plugin=cap?.Plugins?.InventoryFiles || registered || (typeof cap?.registerPlugin==='function' ? (registered=cap.registerPlugin('InventoryFiles')) : null);
+    if(!plugin)throw Error('No está disponible el guardado nativo. Cierra y abre la app; si persiste, actualiza el APK.');
+    return plugin;
+  }
   let exporting = false;
   async function save(blob, name) {
     if (!native) {
@@ -10,6 +16,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       return;
     }
+    const plugin=getPlugin();
     if (exporting) throw Error('Termina de guardar el archivo anterior.');
     exporting = true;
     let id;
@@ -32,6 +39,6 @@
     return save(new Blob([XLSX.write(book, { bookType: 'xlsx', type: 'array' })],
       { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
   }
-  async function print() { if (native) await plugin.print(); else window.print(); }
+  async function print() { if (native) await getPlugin().print(); else window.print(); }
   window.InventoryOutput = { native, save, excel, print };
 })();

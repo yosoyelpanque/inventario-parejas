@@ -405,6 +405,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     function changeTab(tab) {
+        localStorage.setItem('inventario-last-tab',tab);
         document.body.classList.toggle('editing-additional',tab==='adicionales');
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); document.getElementById(`${tab}-tab`).classList.add('active'); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
         const globalSearch = document.getElementById('global-search-input'); globalSearch.value = ''; const invActions = document.getElementById('nav-inventory-actions');
@@ -480,7 +481,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nombreArea = cleanAreaName(u.area, NOMBRES_AREAS[u.area] || 'Área Desconocida'); const isActive = state.activeResguardante?.id === u.id; const btnText = isActive ? '<i class="fa-solid fa-user-check mr-1"></i>Activo' : 'Activar';
             const userLocations=[...new Set((u.locations||[u.locationWithId]).filter(Boolean))];
             const locTags=userLocations.length?`<span class="user-location-summary" title="${escapeHTML(userLocations.join(' / '))}"><span>${escapeHTML(userLocations[0])}</span>${userLocations.length>1?`<b>+${userLocations.length-1} más</b>`:''}</span>`:'';
-            return `<div class="flex flex-col md:flex-row justify-between items-start md:items-center p-3 border rounded-xl bg-white shadow-sm mb-2 ${isActive ? 'border-green-500 bg-green-50 ring-2 ring-green-200' : 'hover:border-indigo-300'}"><div class="cursor-pointer mb-3 md:mb-0 w-full md:flex-1 min-w-0 pr-2" onclick="showUserDetail(${inlineValue(u.id)})"><p class="font-bold text-base text-gray-800 truncate" title="${escapeHTML(u.name)}">${escapeHTML(u.name)}</p><p class="text-sm text-gray-500 font-medium truncate"><i class="fa-solid fa-briefcase mr-1"></i>Área ${escapeHTML(u.area)} - ${escapeHTML(nombreArea)}</p><div class="mt-1 flex flex-col gap-0.5 w-full">${locTags}</div></div><div class="flex flex-shrink-0 flex-wrap gap-2 w-full md:w-auto grid grid-cols-4 md:flex items-center"><button data-action="save" class="w-full md:w-auto py-2.5 px-4 font-bold rounded-xl text-sm" onclick="activateUser(${inlineValue(u.id)})">${btnText}</button><button data-action="photo" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Foto" onclick="showPhoto('user', ${inlineValue(u.id)})"><i class="fa-solid fa-camera"></i></button><button data-action="edit" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Editar" onclick="openEditUser(${inlineValue(u.id)})"><i class="fa-solid fa-pencil"></i></button><button data-action="danger" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Eliminar" onclick="deleteUser(${inlineValue(u.id)})"><i class="fa-solid fa-trash"></i></button></div></div>`
+            return `<div class="flex flex-col md:flex-row justify-between items-start md:items-center p-3 border rounded-xl bg-white shadow-sm mb-2 ${isActive ? 'border-green-500 bg-green-50 ring-2 ring-green-200' : 'hover:border-indigo-300'}"><div class="cursor-pointer mb-3 md:mb-0 w-full md:flex-1 min-w-0 pr-2" onclick="showUserDetail(${inlineValue(u.id)})"><p class="font-bold text-base text-gray-800 truncate" title="${escapeHTML(u.name)}">${escapeHTML(u.name)}</p><p class="text-sm text-gray-500 font-medium truncate"><i class="fa-solid fa-briefcase mr-1"></i>Área ${escapeHTML(u.area)} - ${escapeHTML(nombreArea)}</p><div class="mt-1 flex flex-col gap-0.5 w-full">${locTags}</div></div><div class="flex flex-shrink-0 flex-wrap gap-2 w-full md:w-auto grid grid-cols-4 md:flex items-center"><button data-action="save" class="w-full md:w-auto py-2.5 px-4 font-bold rounded-xl text-sm" data-user-active="${isActive}" onclick="activateUser(${inlineValue(u.id)})">${btnText}</button><button data-action="photo" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Foto" onclick="showPhoto('user', ${inlineValue(u.id)})"><i class="fa-solid fa-camera"></i></button><button data-action="edit" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Editar" onclick="openEditUser(${inlineValue(u.id)})"><i class="fa-solid fa-pencil"></i></button><button data-action="danger" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Eliminar" onclick="deleteUser(${inlineValue(u.id)})"><i class="fa-solid fa-trash"></i></button></div></div>`
         }).join('');
     }
 
@@ -852,7 +853,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const content=document.getElementById('retag-content'),button=document.getElementById('retag-toggle');
         content.hidden=!content.hidden;
         button.setAttribute('aria-expanded',String(!content.hidden));
-        button.innerHTML=content.hidden?'Expandir <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>':'Contraer <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>';
+        button.innerHTML=content.hidden?'<span class="collapse-word">Expandir</span><i class="fa-solid fa-xmark" aria-hidden="true"></i>':'<span class="collapse-word">Contraer</span><i class="fa-solid fa-bars" aria-hidden="true"></i>';
+        button.setAttribute('aria-label',content.hidden?'Expandir bienes para reetiquetar':'Contraer bienes para reetiquetar');
     };
     document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagLimit=30;renderRetagList();};
     document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagLimit=30;renderRetagList();};
@@ -1461,6 +1463,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showMain() {
         document.getElementById('team-page').classList.add('hidden'); document.getElementById('main-app').classList.remove('hidden'); renderTeam();
         const today=new Date();document.getElementById('rep-date').value=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');document.getElementById('rep-year').value=today.getFullYear();
-        renderBackupStatus();updateHeaderArea(); populateFilters(); renderDashboard(); changeTab('users'); updateDatalists(); populateReportFilters(); toggleAdicFormFields('ad');
+        renderBackupStatus();updateHeaderArea(); populateFilters(); renderDashboard(); const lastTab=localStorage.getItem('inventario-last-tab');changeTab(['users','inventory','adicionales','notas','reportes','settings'].includes(lastTab)?lastTab:'users'); updateDatalists(); populateReportFilters(); toggleAdicFormFields('ad');
     }
 });

@@ -1,0 +1,36 @@
+@media screen {
+ button[data-user-active="false"]{background:#CDEED8!important;color:#14532D!important;border-color:#89CDA1!important}
+ #match-search-input{padding-left:46px!important}
+ #global-search-input{border-color:#006847!important;background:#FFFEF5!important;box-shadow:0 0 0 3px #C48D5C35!important}
+ #global-search-input:focus{box-shadow:0 0 0 4px #00684730!important}
+ .mobile-collapse-toggle{display:none}
+ .mobile-collapse-content{display:contents}
+ #mobile-status-footer:empty{display:none}
+}
+@media screen and (max-width:600px){
+ .mobile-collapse-toggle{display:inline-flex;align-items:center;justify-content:center;min-width:36px;min-height:36px;border-radius:8px;flex-shrink:0;margin-left:auto}
+ .mobile-collapse-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+ .mobile-collapse-content{display:block}
+ .mobile-collapse-content[hidden]{display:none}
+ .collapse-word{display:none}
+ #retag-toggle{min-width:36px}
+ #mobile-status-footer{padding:10px 8px 20px;font-size:11px}
+ #active-user-banner{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:3px 6px!important;padding:6px 8px!important}
+ #active-user-banner.hidden{display:none!important}
+ #active-user-banner>div{display:contents!important}
+ #active-user-banner>div>div:first-child{grid-column:1/-1;min-width:0;padding:0!important;background:transparent!important;border:0!important}
+ #active-user-banner>div>div:first-child>div{display:grid!important;grid-template-columns:minmax(0,1fr);gap:0!important}
+ #active-user-banner>div>div:first-child>div>span:first-child,#active-user-banner>div>div:first-child>div>span:nth-child(3){display:none}
+ #active-user-banner-name{display:block;font-size:12px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:18px}
+ #active-user-banner-area{display:block;font-size:10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:16px}
+ #active-user-banner>div>div:nth-child(2){grid-column:1;min-width:0}
+ #active-user-location-select{min-width:0;min-height:32px;font-size:11px!important;padding:4px!important}
+ #deactivate-user-btn{grid-column:2;align-self:end!important;min-height:32px!important;padding:4px 7px!important}
+ #active-user-banner-tag{display:none}
+ .inventory-heading{margin-bottom:6px!important}
+ .inventory-heading h3{font-size:15px!important}
+ .inventory-controls{margin-bottom:8px!important}
+ #inventory-filters-content .inventory-history{margin:8px 0}
+ #global-search-input{min-height:44px;font-size:16px!important}
+ #settings-tab #rfid-panel{margin-top:20px}
+}
