@@ -8,8 +8,15 @@
     if (!/^\d{1,20}$/.test(employeeNumber) || name.length < 3 || name.length > 120) throw Error('Escribe un nombre completo y un número de empleado válido.');
     return {employeeNumber, name};
   };
+  const retired = number => (root.InventoryRetiredPeople||[]).some(n=>String(n).replace(/^0+/, '')===String(number).replace(/^0+/, ''));
+  function reconcileDirectory(entries,official=root.InventoryPeople||[]) {
+    const merged=new Map();
+    for(const p of [...validateDirectory(entries),...official])if(!retired(p.employeeNumber))merged.set(p.employeeNumber.replace(/^0+/, ''),p);
+    return validateDirectory([...merged.values()]);
+  }
   function pair(active, companion) {
     active = person(active); companion = companion == null ? null : person(companion);
+    if(retired(active.employeeNumber)||retired(companion?.employeeNumber))throw Error('Un auditor seleccionado está dado de baja. Selecciona a una persona vigente.');
     if (companion && active.employeeNumber.replace(/^0+/, '') === companion.employeeNumber.replace(/^0+/, '')) throw Error('Elige a dos personas distintas.');
     return {active, companion};
   }
@@ -36,7 +43,7 @@
     });
   }
   async function exportDirectory() {
-    return validateDirectory(await root.InventoryStorage.getItem('appData','auditorDirectory') || root.InventoryPeople);
+    return reconcileDirectory(await root.InventoryStorage.getItem('appData','auditorDirectory') || root.InventoryPeople);
   }
   async function mount(open) {
     const $ = id => document.getElementById(id), status = $('team-status');
@@ -46,8 +53,8 @@
       const custom = saved || JSON.parse(localStorage.getItem(DIRECTORY) || '[]');
       if (saved) directory = [];
       for (const entry of custom) { const p = person(entry); if (!directory.some(x => x.employeeNumber === p.employeeNumber)) directory.push(p); }
-      directory = validateDirectory(directory);
-      if (!saved) await root.InventoryStorage.setItem('appData','auditorDirectory',directory);
+      directory = reconcileDirectory(directory);
+      if (JSON.stringify(saved)!==JSON.stringify(directory)) await root.InventoryStorage.setItem('appData','auditorDirectory',directory);
     } catch { status.textContent = 'No se pudo recuperar el directorio local. Puedes registrar de nuevo a las personas.'; }
     const confirmed = {active:null, companion:null};
     const normalize = value => value.trim().replace(/^0+/, '') || '0';
@@ -98,6 +105,7 @@
       event.preventDefault(); const form = event.target, button = form.querySelector('button'); button.disabled = true;
       try {
         const entry = person({name:$('person-name').value, employeeNumber:$('person-number').value});
+        if(retired(entry.employeeNumber))throw Error('Ese número de empleado está dado de baja.');
         if (directory.some(p => normalize(p.employeeNumber) === normalize(entry.employeeNumber))) throw Error('Ese número de empleado ya está registrado. Escríbelo para confirmar el nombre.');
         const next = [...directory,entry];
         await root.InventoryStorage.setItem('appData','auditorDirectory',next);
@@ -124,6 +132,6 @@
       if (saved) { const team=pair(saved.active,saved.companion); await open(team); remember(team); }
     } catch(error) { forget(); status.textContent = 'Selecciona la pareja para continuar. ' + error.message; }
   }
-  root.InventoryTeam = {person, pair, swap, attribution, clear, savedAttribution, label, excel, remember, forget, mount, validateDirectory, exportDirectory};
+  root.InventoryTeam = {person, pair, swap, attribution, clear, savedAttribution, label, excel, remember, forget, mount, validateDirectory, exportDirectory, reconcileDirectory};
   if (typeof module !== 'undefined') module.exports = root.InventoryTeam;
 })(globalThis);

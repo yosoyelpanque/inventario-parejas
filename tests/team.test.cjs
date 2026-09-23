@@ -46,3 +46,8 @@ test('vincular un adicional captura la pareja completa de esa verificación', ()
   assert.deepEqual(T.savedAttribution(result.inventory[0]),T.attribution(state));
   assert.equal(state.inventory[0].UBICADO,'NO');
 });
+test('actualiza directorios previos, conserva altas locales y bloquea baja sin cambiar historial',()=>{
+ const fs=require('fs'),vm=require('vm'),ctx={};ctx.window=ctx;vm.runInNewContext(fs.readFileSync(require.resolve('../src/people.js'),'utf8'),ctx);vm.runInNewContext(fs.readFileSync(require.resolve('../src/team.js'),'utf8'),ctx);
+ const old=[{employeeNumber:'11885',name:'ESTRADA HERNÁNDEZ ROBERTO'},{employeeNumber:'09999',name:'Auditor Local'}],before=JSON.stringify(old),t=ctx.InventoryTeam;
+ const next=t.reconcileDirectory(old);assert.equal(JSON.stringify(old),before);assert.equal(next.length,15);assert.ok(next.some(p=>p.employeeNumber==='09999'));assert.ok(next.some(p=>p.employeeNumber==='46955'));assert.ok(next.some(p=>p.employeeNumber==='46965'));assert.ok(!next.some(p=>p.employeeNumber==='11885'));assert.throws(()=>t.pair(old[0],null),/baja/);assert.equal(t.excel({ubicadoPor:old[0].name})['Ubicado Por'],old[0].name);
+});

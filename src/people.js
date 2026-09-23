@@ -24,10 +24,6 @@ window.InventoryPeople = [
     "name": "DOMÍNGUEZ VAZQUEZ FRANCISCO JAVIER"
   },
   {
-    "employeeNumber": "11885",
-    "name": "ESTRADA HERNÁNDEZ ROBERTO"
-  },
-  {
     "employeeNumber": "19328",
     "name": "LÓPEZ ESTRADA LEOPOLDO"
   },
@@ -50,5 +46,14 @@ window.InventoryPeople = [
   {
     "employeeNumber": "38215",
     "name": "VAZQUEZ VILLEGAS EDUARDO"
+  },
+  {
+    "employeeNumber": "46955",
+    "name": "ERIK ADRIAN CADENA CANCINO"
+  },
+  {
+    "employeeNumber": "46965",
+    "name": "ADRIANA LIZETH BALDERAS NATIVIDAD"
   }
 ];
+window.InventoryRetiredPeople = ["11885"];
