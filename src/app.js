@@ -853,7 +853,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const content=document.getElementById('retag-content'),button=document.getElementById('retag-toggle');
         content.hidden=!content.hidden;
         button.setAttribute('aria-expanded',String(!content.hidden));
-        button.innerHTML=content.hidden?'<span class="collapse-word">Expandir</span><i class="fa-solid fa-xmark" aria-hidden="true"></i>':'<span class="collapse-word">Contraer</span><i class="fa-solid fa-bars" aria-hidden="true"></i>';
+        button.innerHTML=content.hidden?'<span class="collapse-word">Expandir</span><span class="collapse-triangle" aria-hidden="true"></span>':'<span class="collapse-word">Contraer</span><span class="collapse-triangle" aria-hidden="true"></span>';
         button.setAttribute('aria-label',content.hidden?'Expandir bienes para reetiquetar':'Contraer bienes para reetiquetar');
     };
     document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagLimit=30;renderRetagList();};
@@ -1390,7 +1390,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             zip.file('backup-manifest.json',JSON.stringify({version:3,createdAt:timestamp,inventory:snapshot.inventory.length,additional:(snapshot.additionalItems||[]).length,images,rfidTags:rfidBackup.records.length,auditors:auditors.length}));
             const content=await zip.generateAsync({type:'blob'});
             await InventoryBackups.inspect(content);
-            await InventoryOutput.save(content,'Inventario_'+timestamp.replace(/[:.]/g,'-')+'.zip');
+            await InventoryOutput.save(content,InventoryBackupDetails.filename(state));
             await photoDB.setItem('appData','lastBackupGenerated',timestamp);await renderBackupStatus();
             showToast(InventoryOutput.native ? 'Respaldo guardado en la ubicación elegida.' : 'Respaldo comprobado. Revisa que el ZIP esté en Descargas.','success');
         } catch(error) {showToast('No se pudo completar el respaldo: '+error.message,'error');}
@@ -1404,11 +1404,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const info = await InventoryBackups.inspect(file);
             const modal = document.getElementById('restore-backup-dialog');
             document.getElementById('restore-file-name').textContent = file.name;
+            const currentImages=[];for(const store of ['photos','layoutImages'])for(const item of await photoDB.getAllItems(store))currentImages.push({store,...item});
+            const currentMedia=await InventoryBackupDetails.images(currentImages),nextMedia=await InventoryBackupDetails.images(info.images);
             const rows = [
                 ['Bienes',state.inventory.length,info.state.inventory.length],
                 ['Adicionales',state.additionalItems.length,(info.state.additionalItems||[]).length],
                 ['Resguardantes',state.resguardantes.length,info.state.resguardantes.length],
-                ['Imágenes',(await photoDB.getAllItems('photos')).length+(await photoDB.getAllItems('layoutImages')).length,info.images.length],
+                ['Archivos de imagen guardados',currentMedia.total,nextMedia.total],
+                ['Contenido distinto (sin copias idénticas)',currentMedia.unique,nextMedia.unique],
+                ['Copias idénticas',currentMedia.duplicates,nextMedia.duplicates],
+                ['Archivos vacíos',currentMedia.empty,nextMedia.empty],
+                ...Object.keys(nextMedia.types).map(type=>[type,currentMedia.types[type],nextMedia.types[type]]),
                 ['Auditores',(await InventoryTeam.exportDirectory()).length,info.auditors ? info.auditors.length : 'Se conservan'],
                 ['Etiquetas RFID',(await InventoryRFIDStore.exportPack(photoDB)).records.length,info.rfid ? info.rfid.records.length : 'Se conservan']
             ];
@@ -1416,6 +1422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const row=document.createElement('tr');
                 for(const value of [label,current,next]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}return row;
             }));
+            document.getElementById('restore-image-explanation').textContent='El total cuenta archivos del ZIP, no fotos tomadas. Una foto aplicada a varios bienes se guarda bajo varias claves. También puede haber fotos conservadas de bienes retirados. Restaurar conserva todos los archivos; no se eliminan por este conteo.';
             document.getElementById('restore-error').textContent='';
             modal.showModal();
             document.getElementById('restore-confirm').onclick = async () => {

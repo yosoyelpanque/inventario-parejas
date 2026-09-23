@@ -34,3 +34,13 @@
  #global-search-input{min-height:44px;font-size:16px!important}
  #settings-tab #rfid-panel{margin-top:20px}
 }
+@media screen {
+ .collapse-triangle{display:inline-block;font-size:12px;line-height:1;transition:transform .15s}
+ .collapse-triangle::before{content:'\25B6'}
+ [aria-expanded="true"]>.collapse-triangle{transform:rotate(90deg)}
+}
+@media screen and (max-width:600px){
+ .sticky-header>#nav-inventory-actions:not(.hidden){display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px!important;padding:6px 4px;background:var(--canvas);width:100%;margin:0}
+ .sticky-header>#nav-inventory-actions button{display:flex;flex-direction:column;gap:3px;width:100%!important;min-width:0!important;height:46px!important;min-height:46px!important;padding:5px 1px!important;font-size:10px!important;line-height:12px;border-radius:7px;white-space:nowrap}
+ .sticky-header>#nav-inventory-actions button i{font-size:14px!important;margin:0!important}
+}

@@ -16,7 +16,7 @@ let xml=fs.readFileSync(manifest,'utf8').replace('android:allowBackup="true"','a
 if(!xml.includes('android.permission.CAMERA'))xml=xml.replace('</manifest>','<uses-permission android:name="android.permission.CAMERA" />\n<uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>');
 fs.writeFileSync(manifest,xml);
 const gradle='android/app/build.gradle';
-let build=fs.readFileSync(gradle,'utf8').replace(/versionCode \d+/,'versionCode 10404').replace(/versionName "[^"]+"/,'versionName "1.4.4"');
+let build=fs.readFileSync(gradle,'utf8').replace(/versionCode \d+/,'versionCode 10405').replace(/versionName "[^"]+"/,'versionName "1.4.5"');
 fs.writeFileSync(gradle,build);
 // Reuse the existing application icon rather than the Capacitor template icon.
 for(const density of ['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi']){
