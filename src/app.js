@@ -256,9 +256,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         for(const [suffix,answer] of [['si',true],['no',false]])document.getElementById('formato-entrada-'+suffix).onclick=()=>{modal.classList.remove('show');item.tieneFormatoEntrada=answer;persistAdditional(item,editing);};
     }
 
-    let cameraRequest=0;
-    async function startCamera() { stopCamera(); const request=cameraRequest; try { const stream = await InventoryCamera.use(video=>navigator.mediaDevices.getUserMedia({video,audio:false})); if(request!==cameraRequest){stream.getTracks().forEach(t=>t.stop());return;} cameraStream=stream; const videoEl = document.getElementById('camera-stream'); videoEl.srcObject = cameraStream; videoEl.setAttribute('playsinline', true); await videoEl.play(); } catch (err) { showToast('Error de cámara.', 'error'); } }
-    function stopCamera() { ++cameraRequest; if(cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } const videoEl = document.getElementById('camera-stream'); if(videoEl) { videoEl.pause(); videoEl.srcObject = null; } }
+    let cameraRequest=0, releasePhotoFocus=()=>{}, releaseScanFocus=()=>{};
+    async function startCamera() { stopCamera(); const request=cameraRequest; try { const stream = await InventoryCamera.use(video=>navigator.mediaDevices.getUserMedia({video,audio:false})); if(request!==cameraRequest){stream.getTracks().forEach(t=>t.stop());return;} cameraStream=stream; const videoEl = document.getElementById('camera-stream'); videoEl.srcObject = cameraStream; videoEl.setAttribute('playsinline', true); await videoEl.play(); if(request===cameraRequest)releasePhotoFocus=InventoryCamera.attachFocus(videoEl,document.getElementById("photo-focus-status")); } catch (err) { showToast('Error de cámara.', 'error'); } }
+    function stopCamera() { ++cameraRequest; releasePhotoFocus(); if(cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } const videoEl = document.getElementById('camera-stream'); if(videoEl) { videoEl.pause(); videoEl.srcObject = null; } }
     document.getElementById('change-team-btn').onclick = async () => {
         try {
             await photoDB.flush();
@@ -955,7 +955,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let scanSession = 0, scannerStarting = false;
     async function closeCodeScanner() {
-        ++scanSession;
+        ++scanSession; releaseScanFocus();
         document.getElementById('qr-modal').classList.remove('show');
         if (html5QrCode?.isScanning) await html5QrCode.stop().catch(() => {});
     }
@@ -975,6 +975,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast('Código detectado', 'success');
             }, () => {}));
             if (session !== scanSession && html5QrCode.isScanning) await html5QrCode.stop();
+            else if(session===scanSession) releaseScanFocus=InventoryCamera.attachFocus(document.querySelector("#qr-reader video"),document.getElementById("qr-focus-status"));
         } catch {
             if (session === scanSession) { await closeCodeScanner(); showToast('No se pudo abrir la cámara. Revisa el permiso o escribe la serie.', 'error'); }
         } finally { scannerStarting = false; }
