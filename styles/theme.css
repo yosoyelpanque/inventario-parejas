@@ -95,8 +95,8 @@
   #registered-users-list>div>div:last-child{grid-template-columns:minmax(80px,1.5fr) repeat(3,minmax(0,1fr));gap:6px}#registered-users-list button{padding:10px 7px!important}
   #notas-tab>div:nth-child(2){align-items:flex-start;gap:10px;flex-wrap:wrap}#print-notas-btn{font-size:12px}
   .team-card{padding:24px 20px;margin:14px auto}.team-card h1{font-size:27px}.team-logo{height:48px}
- .sticky-header{display:contents}
- #tabs-container{position:sticky;top:0;z-index:50;border-radius:0;box-shadow:0 4px 12px #033e3c20}
+ .sticky-header{display:block;position:sticky;top:0;z-index:50}
+ #tabs-container{border-radius:0}
  #main-header #change-team-btn{grid-column:1;grid-row:4}
  #main-header #upload-btn{grid-column:2;grid-row:4}
   #device-status,#backup-status{font-size:10px}

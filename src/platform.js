@@ -1,7 +1,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const label = document.getElementById('device-status');
   let saving = 'Almacenamiento local';
-  const render = () => { label.textContent = 'v1.4.2 · ' + (navigator.onLine ? 'Con conexión' : 'Sin conexión') + ' · ' + saving; };
+  const render = () => { label.textContent = 'v1.4.3 · ' + (navigator.onLine ? 'Con conexión' : 'Sin conexión') + ' · ' + saving; };
   window.addEventListener('online', render);
   window.addEventListener('offline', render);
   window.addEventListener('inventory-save', e => { saving=e.detail; render(); });
