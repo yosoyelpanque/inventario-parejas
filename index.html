@@ -343,7 +343,7 @@
                     </div>
                 </div>
 
-                <div id="settings-tab" class="tab-content"><section id="rfid-panel" aria-label="Catálogo RFID">
+                <div id="settings-tab" class="tab-content"><section class="area-review" id="camera-settings"><h2>Cámara predeterminada</h2><p>Elige la cámara para fotografías y escaneo de QR o códigos de barras. Puedes cambiarla cuando quieras.</p><div class="review-controls"><label for="camera-default">Cámara del dispositivo<select id="camera-default"><option value="">Automática (preferir trasera)</option></select></label><button type="button" data-action="photo" id="camera-refresh">Detectar cámaras</button></div><p id="camera-setting-status" role="status"></p></section><section id="rfid-panel" aria-label="Catálogo RFID">
 <h2>Catálogo RFID</h2><p>Equivalencias entre tags y claves únicas, disponibles sin internet en este equipo. Las claves .391880 y 0.39188 se reconocen como la misma. Importar no modifica el inventario.</p>
 <p id="rfid-summary">Abre Ajustes para consultar el catálogo.</p>
 <label for="rfid-files">Importar Excel de tags o respaldo del catálogo (JSON)</label><input id="rfid-files" type="file" accept=".xlsx,.xls,.json" multiple>
@@ -384,6 +384,7 @@
 <script src="src/people.js"></script>
 <script src="src/team.js"></script>
 <script src="src/output.js"></script>
+<script src="src/camera.js"></script>
 <script src="src/mobile.js"></script>
 <script src="src/platform.js"></script>
 <script src="src/additional-rules.js"></script>

@@ -256,8 +256,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         for(const [suffix,answer] of [['si',true],['no',false]])document.getElementById('formato-entrada-'+suffix).onclick=()=>{modal.classList.remove('show');item.tieneFormatoEntrada=answer;persistAdditional(item,editing);};
     }
 
-    async function startCamera() { stopCamera(); try { cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); const videoEl = document.getElementById('camera-stream'); videoEl.srcObject = cameraStream; videoEl.setAttribute('playsinline', true); await videoEl.play(); } catch (err) { showToast('Error de cámara.', 'error'); } }
-    function stopCamera() { if(cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } const videoEl = document.getElementById('camera-stream'); if(videoEl) { videoEl.pause(); videoEl.srcObject = null; } }
+    let cameraRequest=0;
+    async function startCamera() { stopCamera(); const request=cameraRequest; try { const stream = await InventoryCamera.use(video=>navigator.mediaDevices.getUserMedia({video,audio:false})); if(request!==cameraRequest){stream.getTracks().forEach(t=>t.stop());return;} cameraStream=stream; const videoEl = document.getElementById('camera-stream'); videoEl.srcObject = cameraStream; videoEl.setAttribute('playsinline', true); await videoEl.play(); } catch (err) { showToast('Error de cámara.', 'error'); } }
+    function stopCamera() { ++cameraRequest; if(cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } const videoEl = document.getElementById('camera-stream'); if(videoEl) { videoEl.pause(); videoEl.srcObject = null; } }
     document.getElementById('change-team-btn').onclick = async () => {
         try {
             await photoDB.flush();
@@ -966,13 +967,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
         let detected = false;
         try {
-            await html5QrCode.start({ facingMode:'environment' }, { fps:10 }, async text => {
+            await InventoryCamera.use(camera=>html5QrCode.start(camera, { fps:10 }, async text => {
                 if (detected || session !== scanSession) return;
                 detected = true;
                 await closeCodeScanner();
                 onRead(text.trim());
                 showToast('Código detectado', 'success');
-            }, () => {});
+            }, () => {}));
             if (session !== scanSession && html5QrCode.isScanning) await html5QrCode.stop();
         } catch {
             if (session === scanSession) { await closeCodeScanner(); showToast('No se pudo abrir la cámara. Revisa el permiso o escribe la serie.', 'error'); }
