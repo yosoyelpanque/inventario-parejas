@@ -1,12 +1,12 @@
 /* Action semantics are independent of the institutional navigation palette. */
 @media screen {
   button[data-action] { background:var(--action-bg)!important; color:var(--action-ink)!important; border-color:var(--action-border)!important; background-image:none!important; }
-  button[data-action="save"] { --action-bg:#006847; --action-ink:#fff; --action-border:#03564B; }
-  button[data-action="edit"] { --action-bg:#FFE0B2; --action-ink:#783900; --action-border:#D18A35; }
-  button[data-action="danger"] { --action-bg:#B42332; --action-ink:#fff; --action-border:#941B28; }
-  button[data-action="note"] { --action-bg:#FFF1A8; --action-ink:#624B00; --action-border:#C5A52E; }
-  button[data-action="photo"] { --action-bg:#D8EFFF; --action-ink:#124B70; --action-border:#83BADF; }
-  button[data-action="info"] { --action-bg:#E7E9F5; --action-ink:#354168; --action-border:#ACB3D0; }
+  button[data-action="save"] { --action-bg:#22C55E; --action-ink:#fff; --action-border:#16A34A; }
+  button[data-action="edit"] { --action-bg:#3B82F6; --action-ink:#fff; --action-border:#2563EB; }
+  button[data-action="danger"] { --action-bg:#EF4444; --action-ink:#fff; --action-border:#DC2626; }
+  button[data-action="note"] { --action-bg:#EAB308; --action-ink:#fff; --action-border:#CA8A04; }
+  button[data-action="photo"] { --action-bg:#6366F1; --action-ink:#fff; --action-border:#4F46E5; }
+  button[data-action="info"] { --action-bg:#6366F1; --action-ink:#fff; --action-border:#4F46E5; }
   button[data-action="neutral"] { --action-bg:#F0F1F3; --action-ink:#374151; --action-border:#C7CCD2; }
   button[data-action]:hover:not(:disabled) { filter:brightness(.95); }
   button[data-action][aria-pressed="true"] { box-shadow:inset 0 -3px #03564B; font-weight:800; }
@@ -34,4 +34,102 @@
   #detail-retag-flag { background:#FFE0B2; color:#783900; }
   #detail-area-flag { background:#FFF1A8; color:#624B00; }
   @media(max-width:767px) { #detail-view-photo-container,#ad-det-photo-container { height:180px; } #retag-list article{align-items:flex-start;flex-direction:column} }
+}
+
+/* Original button colors from 00610a6, approved in the preview.
+   Scoped to screen so printed reports retain their existing appearance. */
+@media screen {
+html body #restore-cancel{background-color:rgb(241, 245, 249)!important;color:rgb(51, 65, 85)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #restore-confirm{background-color:rgb(67, 56, 202)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #preview-print-btn{background-color:rgb(22, 163, 74)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #preview-close-btn{background-color:rgb(254, 226, 226)!important;color:rgb(185, 28, 28)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #mig-delete-btn{background-color:rgb(254, 226, 226)!important;color:rgb(220, 38, 38)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #mig-confirm-btn{background-color:rgb(99, 102, 241)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #merge-cancel-btn{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #resolve-conflicts-btn{background-color:rgb(249, 115, 22)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #qr-close-btn{background-color:rgb(254, 226, 226)!important;color:rgb(220, 38, 38)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #modal-cancel{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #modal-confirm{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #discard-note-draft{background-color:rgb(241, 245, 249)!important;color:rgb(71, 85, 105)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #note-cancel-btn{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #note-save-btn{background-color:rgb(34, 197, 94)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #detail-view-close-btn{background-color:rgb(241, 245, 249)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #delete-active-photo-btn{background-color:rgb(239, 68, 68)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #detail-btn-ubicar{background-color:rgb(34, 197, 94)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #detail-btn-reetiquetar{background-color:rgb(59, 130, 246)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #detail-btn-desubicar{background-color:rgb(255, 247, 237)!important;color:rgb(154, 52, 18)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #detail-btn-nota{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #detail-btn-foto{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #adicional-detail-close-btn{background-color:rgb(241, 245, 249)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #ad-delete-photo-btn{background-color:rgb(239, 68, 68)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #ad-det-foto-btn{background-color:rgb(99, 102, 241)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #ad-det-edit-btn{background-color:rgb(219, 234, 254)!important;color:rgb(29, 78, 216)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #user-detail-view-close-btn{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #location-edit-cancel-btn{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #location-edit-save{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #edit-add-location-btn{background-color:rgb(59, 130, 246)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #edit-user-cancel-btn{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #edit-user-save-btn{background-color:rgb(99, 102, 241)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #edit-autofill-serie-btn{background-color:rgb(29, 78, 216)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #edit-adicional-cancel-btn{background-color:rgb(241, 245, 249)!important;color:rgb(51, 65, 85)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #edit-adicional-save-btn{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #formato-entrada-no{background-color:rgb(239, 68, 68)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #formato-entrada-si{background-color:rgb(34, 197, 94)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #match-close-btn{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #delete-photo-btn{background-color:rgb(239, 68, 68)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #capture-photo-btn{background-color:rgba(0, 0, 0, 0)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:linear-gradient(to right, rgb(99, 102, 241), rgb(139, 92, 246), rgb(168, 85, 247))!important}
+html body #photo-close-btn{background-color:rgb(229, 231, 235)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #team-back{background-color:rgba(0, 0, 0, 0)!important;color:rgb(67, 56, 202)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #team-active-accept{background-color:rgb(67, 56, 202)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #team-companion-accept{background-color:rgb(67, 56, 202)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #team-solo{background-color:rgba(0, 0, 0, 0)!important;color:rgb(67, 56, 202)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #team-start{background-color:rgb(67, 56, 202)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #swap-team-btn{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(199, 210, 254)!important;background-image:none!important}
+html body #undo-btn{background-color:rgb(255, 237, 213)!important;color:rgb(194, 65, 12)!important;border-color:rgb(253, 186, 116)!important;background-image:none!important}
+html body #upload-btn{background-color:rgb(99, 102, 241)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #change-team-btn{background-color:rgb(254, 226, 226)!important;color:rgb(220, 38, 38)!important;border-color:rgb(254, 202, 202)!important;background-image:none!important}
+html body #toggle-header-btn{background-color:rgb(243, 244, 246)!important;color:rgb(107, 114, 128)!important;border-color:rgb(209, 213, 219)!important;background-image:none!important}
+html body #nav-ubicado-btn{background-color:rgb(34, 197, 94)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #nav-desubicar-btn{background-color:rgb(249, 115, 22)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #nav-bulk-note-btn{background-color:rgb(234, 179, 8)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #nav-bulk-photo-btn{background-color:rgb(236, 72, 153)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #nav-qr-scan-btn{background-color:rgb(147, 51, 234)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #nav-clear-search-btn{background-color:rgb(229, 231, 235)!important;color:rgb(55, 65, 81)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #deactivate-user-btn{background-color:rgb(255, 255, 255)!important;color:rgb(21, 128, 61)!important;border-color:rgb(74, 222, 128)!important;background-image:none!important}
+html body #transfer-submit{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #add-location-btn{background-color:rgb(34, 197, 94)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #create-user-btn{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #prev-page-btn{background-color:rgb(238, 242, 255)!important;color:rgb(67, 56, 202)!important;border-color:rgb(199, 210, 254)!important;background-image:none!important}
+html body #next-page-btn{background-color:rgb(238, 242, 255)!important;color:rgb(67, 56, 202)!important;border-color:rgb(199, 210, 254)!important;background-image:none!important}
+html body #discard-capture-draft{background-color:rgb(241, 245, 249)!important;color:rgb(71, 85, 105)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #autofill-serie-btn{background-color:rgb(29, 78, 216)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #add-adicional-btn{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #ad-bulk-autofill-btn{background-color:rgb(59, 130, 246)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #notes-select-all{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #notes-clear-selection{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #notes-bulk-move{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #print-notas-btn{background-color:rgb(99, 102, 241)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #filter-notas-active{background-color:rgba(0, 0, 0, 0)!important;color:rgb(67, 56, 202)!important;border-color:rgb(99, 102, 241)!important;background-image:none!important}
+html body #filter-notas-archived{background-color:rgba(0, 0, 0, 0)!important;color:rgb(107, 114, 128)!important;border-color:rgba(0, 0, 0, 0)!important;background-image:none!important}
+html body #review-refresh{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #review-more{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #rep-generate-btn{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #export-reetiquetado-btn{background-color:rgb(37, 99, 235)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #conciliador-upload-btn{background-color:rgb(243, 232, 255)!important;color:rgb(126, 34, 206)!important;border-color:rgb(216, 180, 254)!important;background-image:none!important}
+html body #concil-export-btn{background-color:rgb(229, 231, 235)!important;color:rgb(55, 65, 81)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #concil-aplicar-btn{background-color:rgb(22, 163, 74)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #rfid-export{background-color:rgba(0, 0, 0, 0)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #rfid-issues{background-color:rgba(0, 0, 0, 0)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #rfid-conflicts{background-color:rgba(0, 0, 0, 0)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #rfid-apply{background-color:rgba(0, 0, 0, 0)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #rfid-cancel{background-color:rgba(0, 0, 0, 0)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #rfid-search{background-color:rgba(0, 0, 0, 0)!important;color:rgb(31, 41, 55)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #recovery-create{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #history-undo{background-color:rgb(238, 242, 255)!important;color:rgb(55, 48, 163)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #export-session-btn{background-color:rgb(59, 130, 246)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #import-session-btn{background-color:rgb(22, 163, 74)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #merge-session-btn{background-color:rgb(147, 51, 234)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
+html body #export-excel-btn{background-color:rgb(5, 150, 105)!important;color:rgb(255, 255, 255)!important;border-color:rgb(110, 231, 183)!important;background-image:none!important}
+html body #clear-session-btn{background-color:rgb(220, 38, 38)!important;color:rgb(255, 255, 255)!important;border-color:rgb(252, 165, 165)!important;background-image:none!important}
+html body #add-magic-btn{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
 }
