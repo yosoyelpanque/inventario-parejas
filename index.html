@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 20072)
+Total output lines: 406
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -186,9 +189,7 @@
                 </nav>
 <div class="workspace-toolbar">
 
-                        <div class="relative w-full md:w-64 flex-grow">
-                            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm z-10"></i>
-                            <input type="search" inputmode="search" id="global-search-input" aria-label="Buscar en el apartado actual" placeholder="Buscar..." class="w-full border-2 border-indigo-200 !pl-11 p-2 rounded-xl text-base bg-gray-50 focus:bg-white focus:border-indigo-500 transition-colors shadow-sm outline-none font-bold text-gray-700 relative">
+                        <div clas…72 tokens truncated…Buscar en el apartado actual" placeholder="Buscar..." class="w-full border-2 border-indigo-200 !pl-11 p-2 rounded-xl text-base bg-gray-50 focus:bg-white focus:border-indigo-500 transition-colors shadow-sm outline-none font-bold text-gray-700 relative">
                         </div>
 
 </div>
@@ -209,7 +210,7 @@
 
             <div id="main-content-area" class="p-4 md:p-6 rounded-b-2xl rounded-tr-2xl shadow-xl glass-effect border border-t-0 border-gray-300">
 
-                <div id="users-tab" class="tab-content active"><details class="area-review" id="transfer-panel"><summary>Transferir ubicaciones entre resguardantes</summary><p>Transfiere una ubicación junto con sus bienes, infraestructura y fotografía. El área original de los bienes se conserva.</p><div class="review-controls"><label>Usuario de origen<select id="transfer-from"></select></label><label>Ubicación<select id="transfer-location"></select></label><label>Usuario de destino<select id="transfer-to"></select></label></div><label>Nombre de la ubicación en destino<input id="transfer-name" class="w-full border p-2 rounded-lg" placeholder="Se conserva el nombre original"></label><p id="transfer-summary" role="status"></p><button data-action="edit" id="transfer-submit" type="button">Revisar y transferir</button></details>
+                <div id="users-tab" class="tab-content active"><details class="area-review" id="transfer-panel"><summary>Transferir ubicaciones entre resguardantes</summary><p>Transfiere una ubicación junto con sus bienes, infraestructura y fotografía. El área original de los bienes se conserva.</p><div class="review-controls"><label>Usuario de origen<select id="transfer-from"></select></label><label>Ubicación<select id="transfer-location"></select></label><label>Usuario de destino<select id="transfer-to"></select></label></div><label>Nombre de la ubicación en destino<input id="transfer-name" class="w-full border p-2 rounded-lg" placeholder="Se conserva el nombre original"></label><p id="transfer-summary" role="status"></p><button data-action="edit" id="transfer-submit" type="button">Revisar y transferir</button></details><section id="area-progress-panel" class="area-review" aria-labelledby="area-progress-title"><div class="area-progress-heading"><div><h3 id="area-progress-title">Avance por área</h3><p>Porcentaje de bienes del inventario que ya fueron ubicados.</p></div><strong id="area-progress-summary" aria-live="polite"></strong></div><div id="area-progress-list" class="area-progress-list"></div></section>
                     <div class="flex flex-col lg:flex-row gap-6">
                         <div class="lg:w-2/5 p-4 md:p-5 border-2 rounded-xl bg-white shadow-sm">
                             <h3 class="font-extrabold text-xl mb-4 text-indigo-900 border-b pb-2">Registrar Usuario</h3>
@@ -398,7 +399,9 @@
 <script src="src/search.js"></script>
 <script src="src/retag.js"></script>
 <script src="src/asset-status.js"></script>
+<script src="src/progress.js"></script>
 <script src="src/app.js"></script>
 <script src="src/rfid-ui.js"></script>
 </body>
 </html>
+

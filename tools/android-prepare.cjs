@@ -16,11 +16,12 @@ let xml=fs.readFileSync(manifest,'utf8').replace('android:allowBackup="true"','a
 if(!xml.includes('android.permission.CAMERA'))xml=xml.replace('</manifest>','<uses-permission android:name="android.permission.CAMERA" />\n<uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>');
 fs.writeFileSync(manifest,xml);
 const gradle='android/app/build.gradle';
-let build=fs.readFileSync(gradle,'utf8').replace(/versionCode \d+/,'versionCode 10410').replace(/versionName "[^"]+"/,'versionName "1.4.10"');
+let build=fs.readFileSync(gradle,'utf8').replace(/versionCode \d+/,'versionCode 10411').replace(/versionName "[^"]+"/,'versionName "1.4.11"');
 fs.writeFileSync(gradle,build);
-// Reuse the existing application icon rather than the Capacitor template icon.
+// Use a centered adaptive icon: emblem in Android's 66/108 safe zone, white background.
 for(const density of ['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi']){
  const dir='android/app/src/main/res/mipmap-'+density;fs.mkdirSync(dir,{recursive:true});
- for(const name of ['ic_launcher.png','ic_launcher_round.png','ic_launcher_foreground.png'])fs.copyFileSync('icon-512x512.png',dir+'/'+name);
+ for(const name of ['ic_launcher.png','ic_launcher_round.png','ic_launcher_foreground.png'])fs.copyFileSync('native/android/icons/mipmap-'+density+'/'+name,dir+'/'+name);
 }
 console.log('Android listo: android/ (API mínima definida por Capacitor).');
+
