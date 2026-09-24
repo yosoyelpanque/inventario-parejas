@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 20072)
-Total output lines: 406
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -189,7 +186,9 @@ Total output lines: 406
                 </nav>
 <div class="workspace-toolbar">
 
-                        <div clas…72 tokens truncated…Buscar en el apartado actual" placeholder="Buscar..." class="w-full border-2 border-indigo-200 !pl-11 p-2 rounded-xl text-base bg-gray-50 focus:bg-white focus:border-indigo-500 transition-colors shadow-sm outline-none font-bold text-gray-700 relative">
+                        <div class="relative w-full md:w-64 flex-grow">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm z-10"></i>
+                            <input type="search" inputmode="search" id="global-search-input" aria-label="Buscar en el apartado actual" placeholder="Buscar..." class="w-full border-2 border-indigo-200 !pl-11 p-2 rounded-xl text-base bg-gray-50 focus:bg-white focus:border-indigo-500 transition-colors shadow-sm outline-none font-bold text-gray-700 relative">
                         </div>
 
 </div>
@@ -210,7 +209,7 @@ Total output lines: 406
 
             <div id="main-content-area" class="p-4 md:p-6 rounded-b-2xl rounded-tr-2xl shadow-xl glass-effect border border-t-0 border-gray-300">
 
-                <div id="users-tab" class="tab-content active"><details class="area-review" id="transfer-panel"><summary>Transferir ubicaciones entre resguardantes</summary><p>Transfiere una ubicación junto con sus bienes, infraestructura y fotografía. El área original de los bienes se conserva.</p><div class="review-controls"><label>Usuario de origen<select id="transfer-from"></select></label><label>Ubicación<select id="transfer-location"></select></label><label>Usuario de destino<select id="transfer-to"></select></label></div><label>Nombre de la ubicación en destino<input id="transfer-name" class="w-full border p-2 rounded-lg" placeholder="Se conserva el nombre original"></label><p id="transfer-summary" role="status"></p><button data-action="edit" id="transfer-submit" type="button">Revisar y transferir</button></details><section id="area-progress-panel" class="area-review" aria-labelledby="area-progress-title"><div class="area-progress-heading"><div><h3 id="area-progress-title">Avance por área</h3><p>Porcentaje de bienes del inventario que ya fueron ubicados.</p></div><strong id="area-progress-summary" aria-live="polite"></strong></div><div id="area-progress-list" class="area-progress-list"></div></section>
+                <div id="users-tab" class="tab-content active"><details class="area-review" id="transfer-panel"><summary>Transferir ubicaciones entre resguardantes</summary><p>Transfiere una ubicación junto con sus bienes, infraestructura y fotografía. El área original de los bienes se conserva.</p><div class="review-controls"><label>Usuario de origen<select id="transfer-from"></select></label><label>Ubicación<select id="transfer-location"></select></label><label>Usuario de destino<select id="transfer-to"></select></label></div><label>Nombre de la ubicación en destino<input id="transfer-name" class="w-full border p-2 rounded-lg" placeholder="Se conserva el nombre original"></label><p id="transfer-summary" role="status"></p><button data-action="edit" id="transfer-submit" type="button">Revisar y transferir</button></details>
                     <div class="flex flex-col lg:flex-row gap-6">
                         <div class="lg:w-2/5 p-4 md:p-5 border-2 rounded-xl bg-white shadow-sm">
                             <h3 class="font-extrabold text-xl mb-4 text-indigo-900 border-b pb-2">Registrar Usuario</h3>
@@ -344,7 +343,13 @@ Total output lines: 406
                     </div>
                 </div>
 
-                <div id="settings-tab" class="tab-content"><section class="area-review" id="camera-settings"><h2>Cámara predeterminada</h2><p>Elige la cámara para fotografías y escaneo de QR o códigos de barras. Puedes cambiarla cuando quieras.</p><div class="review-controls"><label for="camera-default">Cámara del dispositivo<select id="camera-default"><option value="">Automática (preferir trasera)</option></select></label><button type="button" data-action="photo" id="camera-refresh">Detectar cámaras</button></div><p id="camera-setting-status" role="status"></p></section><section id="rfid-panel" aria-label="Catálogo RFID">
+                <div id="settings-tab" class="tab-content">
+                    <details id="area-progress-panel" class="area-review" aria-labelledby="area-progress-title">
+                        <summary id="area-progress-title">Avance por área</summary>
+                        <div class="area-progress-heading"><p>Porcentaje de bienes del inventario que ya fueron ubicados.</p><strong id="area-progress-summary" aria-live="polite"></strong></div>
+                        <div id="area-progress-list" class="area-progress-list"></div>
+                    </details>
+                    <section class="area-review" id="camera-settings"><h2>Cámara predeterminada</h2><p>Elige la cámara para fotografías y escaneo de QR o códigos de barras. Puedes cambiarla cuando quieras.</p><div class="review-controls"><label for="camera-default">Cámara del dispositivo<select id="camera-default"><option value="">Automática (preferir trasera)</option></select></label><button type="button" data-action="photo" id="camera-refresh">Detectar cámaras</button></div><p id="camera-setting-status" role="status"></p></section><section id="rfid-panel" aria-label="Catálogo RFID">
 <h2>Catálogo RFID</h2><p>Equivalencias entre tags y claves únicas, disponibles sin internet en este equipo. Las claves .391880 y 0.39188 se reconocen como la misma. Importar no modifica el inventario.</p>
 <p id="rfid-summary">Abre Ajustes para consultar el catálogo.</p>
 <label for="rfid-files">Importar Excel de tags o respaldo del catálogo (JSON)</label><input id="rfid-files" type="file" accept=".xlsx,.xls,.json" multiple>
@@ -404,4 +409,3 @@ Total output lines: 406
 <script src="src/rfid-ui.js"></script>
 </body>
 </html>
-

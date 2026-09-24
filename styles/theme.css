@@ -119,15 +119,17 @@
 .camera-focus-marker {position:absolute;width:42px;height:42px;border:2px solid #fff7d2;box-shadow:0 0 0 1px #534741;transform:translate(-50%,-50%);border-radius:10px;pointer-events:none;z-index:5}
 
 /* Inventory progress by loaded area. */
-.area-progress-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
-.area-progress-heading h3{margin:0}.area-progress-heading p{margin:3px 0 0;color:var(--muted)}
+.area-progress-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:14px 0}
+.area-progress-heading p{margin:3px 0 0;color:var(--muted)}
 #area-progress-summary{flex-shrink:0;background:#E9EEEA;color:var(--brand);padding:7px 10px;border-radius:999px;font-size:13px}
 .area-progress-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .area-progress-card{border:1px solid var(--line);border-radius:10px;padding:13px;background:#F8FAF8}
-.area-progress-card>div{display:flex;align-items:center;justify-content:space-between;gap:12px}.area-progress-card>div:first-child{align-items:flex-start;margin-bottom:9px}
-.area-progress-card strong{color:var(--brand-dark);font-size:14px}.area-progress-card span,.area-progress-card small{color:var(--muted);font-size:12px;white-space:nowrap}
+#area-progress-panel .area-progress-card h3{margin:0;font-size:14px;color:var(--brand-dark)}
+#area-progress-panel .area-progress-card p{margin:6px 0;font-size:12px;color:var(--muted)}
+.area-progress-track{display:flex;align-items:center;gap:12px}
+.area-progress-track strong{min-width:38px;text-align:right;color:var(--brand-dark);font-size:14px}
+.area-progress-card small{display:block;margin-top:6px;color:var(--muted);font-size:12px}
 .area-progress-card progress{appearance:none;width:100%;height:12px;border:0;border-radius:999px;overflow:hidden;background:#DCE3DE}
 .area-progress-card progress::-webkit-progress-bar{background:#DCE3DE}.area-progress-card progress::-webkit-progress-value{background:#22C55E;border-radius:999px}.area-progress-card progress::-moz-progress-bar{background:#22C55E;border-radius:999px}
-.area-progress-card b{min-width:38px;text-align:right;color:var(--brand-dark)}
 @media(max-width:600px){.area-progress-heading{align-items:center}.area-progress-heading p{font-size:12px}.area-progress-list{grid-template-columns:1fr}.area-progress-card{padding:11px}}
 

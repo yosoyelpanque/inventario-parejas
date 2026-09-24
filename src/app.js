@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 45703)
-Total output lines: 1486
-
 
 
 const NOMBRES_AREAS = { "131100": "Dirección de Almacén e Inventarios", "131000": "Dirección de Almacén e Inventarios", "1": "Dirección General", "2": "Finanzas", "3": "Recursos Humanos", "4": "Operaciones", "5": "Sistemas", "CONTRATO": "Arrendamiento" };
@@ -342,7 +339,749 @@ document.addEventListener('DOMContentLoaded', async () => {
         const box=document.getElementById('review-results');box.replaceChildren();
         if(!rows.length){const p=document.createElement('p');p.textContent=type==='pending'?'No hay pendientes de ubicar en esta selección.':'No hay observaciones en esta selección. Esto no sustituye la revisión física de los bienes.';box.append(p);}
         for(const row of rows.slice(0,reviewLimit)){
-            const card=document.createElement('article'),title=document.createElement('strong'),detail=document.createElement('p'),button=docum…25703 tokens truncated…| ''; document.getElementById('rep-resp-title').value = r.title || '';
+            const card=document.createElement('article'),title=document.createElement('strong'),detail=document.createElement('p'),button=document.createElement('button');
+            title.textContent=(row.key||'Sin clave')+' · '+(row.description||'Sin descripción');
+            detail.textContent=(row.kind==='additional'?'Adicional':'Inventario')+' · Área '+(row.area||'Sin área')+' · '+(row.reasons?.join(' · ')||'Pendiente de ubicar');
+            button.dataset.action='info';button.textContent='Abrir bien';button.disabled=!row.id;button.onclick=()=>row.kind==='additional'?showAdicDetail(row.id):showInvDetail(row.id);
+            card.append(title,detail,button);box.append(card);
+        }
+        document.getElementById('review-more').hidden=rows.length<=reviewLimit;
+    }
+    document.getElementById('review-area').onchange=document.getElementById('review-type').onchange=()=>{reviewLimit=30;renderAreaReview();};
+    document.getElementById('review-refresh').onclick=()=>{reviewLimit=30;populateReviewAreas();};
+    document.getElementById('review-more').onclick=()=>{reviewLimit+=30;renderAreaReview();};
+
+    function reviewImport(batches, result) {
+        const dialog=document.createElement('dialog');dialog.className='import-review';
+        const areas=[...new Set(batches.map(b=>b.areaId))];
+        dialog.innerHTML='<h2>Revisar listados antes de cargar</h2>'+areas.map(area=>{
+            const group=batches.filter(b=>b.areaId===area);
+            const books=[...new Set(group.map(b=>b.bookType))];
+            return `<section><h3>Área ${escapeHTML(area)} — ${escapeHTML(group[0].areaName)}</h3><p><b>${books.length} libro(s) · ${new Set(group.flatMap(b=>b.items.map(i=>i['CLAVE UNICA']))).size} bienes únicos</b></p>`+group.map(b=>`<p><b>${escapeHTML(b.bookType)}</b> · ${b.items.length} registros<br>Archivo: ${escapeHTML(b.filename)}<br>Fecha del listado: ${escapeHTML(b.dates?.join(', ')||'No indicada')}<br>Responsable: ${escapeHTML(b.responsible?.name||'No indicado')}<br>Ubicación del área: ${escapeHTML(b.location||'No indicada')}</p>`).join('')+'</section>';
+        }).join('')+`<p>Se agregarán <b>${result.added}</b> bienes. Duplicados omitidos: <b>${result.duplicates}</b>. Con diferencias: <b>${result.conflicts.length}</b>; se conservarán los datos existentes.</p>`+
+        (batches.some(b=>b.warnings.length)?'<p>Hay advertencias en los archivos:</p><ul>'+batches.flatMap(b=>b.warnings.map(w=>`<li>${escapeHTML(w)}</li>`)).join('')+'</ul>':'')+
+        '<p>¿Son correctos estos listados?</p><div class="review-actions"><button data-action="neutral" type="button" data-cancel>Cancelar</button><button data-action="save" type="button" data-confirm>Confirmar carga</button></div>';
+        document.body.append(dialog);dialog.showModal();
+        return new Promise(resolve=>{const done=value=>{dialog.close();dialog.remove();resolve(value);};dialog.querySelector('[data-cancel]').onclick=()=>done(false);dialog.querySelector('[data-confirm]').onclick=()=>done(true);dialog.oncancel=e=>{e.preventDefault();done(false);};});
+    }
+
+    document.getElementById('upload-btn').onclick = () => document.getElementById('file-input').click();
+    document.getElementById('file-input').onchange = async e => {
+        const files = [...e.target.files]; if (!files.length) return;
+        const overlay=document.getElementById('loading-overlay');
+        overlay.classList.add('show');
+        try {
+            const batches=[];
+            for (const file of files) {
+                document.getElementById('loading-text').textContent='Leyendo '+file.name;
+                batches.push(InventoryExcel.parse(await file.arrayBuffer(),file.name,XLSX));
+            }
+            const result=InventoryExcel.merge(state.inventory,batches);
+            overlay.classList.remove('show');
+            if(!await reviewImport(batches,result))return;
+            overlay.classList.add('show');
+            const areaNames={...state.areaNames};
+            for(const batch of batches)if(batch.areaName)areaNames[batch.areaId]=batch.areaName;
+            const responsablesList=[...(state.responsablesList||[])];
+            for(const batch of batches)if(batch.responsible){const index=responsablesList.findIndex(r=>r.area===batch.areaId);if(index>=0)responsablesList[index]=batch.responsible;else responsablesList.push(batch.responsible);}
+            const suggestedNames=[...new Set([...(state.suggestedNames||[]),...batches.filter(b=>b.responsible).map(b=>b.responsible.name)])];
+            const next=InventoryListings.metadata({...state,inventory:result.items,areaNames,responsablesList,suggestedNames},batches).next;
+            await photoDB.setItem('appData','mainState',InventoryData.clean(next));
+            saveSnapshot('Cargar listados Excel');state=next;Object.assign(NOMBRES_AREAS,areaNames);renderBackupStatus();
+            populateFilters();renderDashboard();filterAndRenderInventory();updateHeaderArea();
+            const summary='Cargados: '+result.added+'. Duplicados omitidos: '+result.duplicates+'.';
+            document.getElementById('import-summary').textContent=summary+(result.conflicts.length?' '+result.conflicts.length+' duplicados tienen diferencias; se conservó el inventario existente. Revísalos con el conciliador.':'');
+            document.getElementById('import-summary').hidden=false;
+            const warnings=batches.flatMap(batch=>batch.warnings.map(w=>batch.filename+': '+w));
+            const detail=result.conflicts.map(c=>c.key+' · '+c.file+'\n'+c.changes.map(v=>v.field+': actual ['+v.current+'] / archivo ['+v.incoming+']').join('\n'));
+            document.getElementById('import-details-text').textContent=[...warnings,...detail].join('\n\n');
+            document.getElementById('import-details').hidden=!warnings.length&&!detail.length;
+            showToast(summary,result.conflicts.length?'warning':'success');
+        } catch(error) {
+            document.getElementById('import-details').hidden=true;
+            document.getElementById('import-summary').textContent=error.message+'. No se modificó el inventario.';
+            document.getElementById('import-summary').hidden=false;
+            showToast('No se pudo completar la carga. Revisa el mensaje del archivo.','error');
+        } finally {overlay.classList.remove('show');e.target.value='';}
+    };
+
+    function changeTab(tab) {
+        localStorage.setItem('inventario-last-tab',tab);
+        document.body.classList.toggle('editing-additional',tab==='adicionales');
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); document.getElementById(`${tab}-tab`).classList.add('active'); document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        const globalSearch = document.getElementById('global-search-input'); globalSearch.value = ''; const invActions = document.getElementById('nav-inventory-actions');
+        if (tab === 'users') { globalSearch.placeholder = 'Buscar usuario...'; globalSearch.disabled = false; invActions.classList.add('hidden'); }
+        else if (tab === 'inventory') { globalSearch.placeholder = 'CLAVE, serie o desc...'; globalSearch.disabled = false; invActions.classList.remove('hidden'); }
+        else if (tab === 'adicionales') { globalSearch.placeholder = 'Buscar adicional...'; globalSearch.disabled = false; invActions.classList.add('hidden'); }
+        else if (tab === 'notas') { globalSearch.placeholder = 'Nota, clave o descripción...'; globalSearch.disabled = false; window.currentNotesPage=1; invActions.classList.add('hidden'); renderNotasTab(); }
+        else if (tab === 'reportes') { globalSearch.placeholder = 'Reporte, área o resguardante...'; globalSearch.disabled = false; invActions.classList.add('hidden'); populateReportFilters();populateReviewAreas();renderReportSearch(); }
+        else if (tab === 'settings') { globalSearch.placeholder = 'No disponible aquí'; globalSearch.disabled = true; invActions.classList.add('hidden'); renderResponsablesSettings(); renderLoadedListings(); renderRecoveryPoints(); renderMagicProfiles();renderSessionHistory(); }
+        const activeNav=document.querySelector('.tab-btn.active'),nav=document.getElementById('tabs-container');
+        if(activeNav && nav.scrollWidth>nav.clientWidth)nav.scrollLeft=activeNav.offsetLeft-nav.offsetLeft-12;
+        updateBanner(); if(tab==='inventory') filterAndRenderInventory(); if(tab==='users') {renderUsers();populateTransferUsers();} if(tab==='adicionales') { populateFilters(); renderAdicionales(); toggleAdicFormFields('ad'); document.getElementById('ad-serie').focus(); } else focusSearch();
+    }
+    document.getElementById('tabs-container').onclick = e => { if(e.target.closest('#toggle-header-btn') || e.target.closest('#nav-inventory-actions') || e.target.closest('#global-search-input')) return; const btn = e.target.closest('.tab-btn'); if(btn) { changeTab(btn.dataset.tab); window.scrollTo(0,0); } };
+    document.getElementById('toggle-header-btn').onclick = () => { document.getElementById('main-header').classList.toggle('hidden'); document.getElementById('dashboard-stats').classList.toggle('hidden'); const i = document.getElementById('toggle-header-icon'); if(document.getElementById('main-header').classList.contains('hidden')) { i.classList.replace('fa-minus', 'fa-plus'); } else { i.classList.replace('fa-plus', 'fa-minus'); } };
+
+    document.getElementById('global-search-input').addEventListener('input', (e) => {
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab; const term = e.target.value.trim().toUpperCase();
+        if (activeTab === 'users') renderUsers();
+        else if (activeTab === 'inventory') { const exactMatchInv = state.inventory.find(i => String(i['CLAVE UNICA']).toUpperCase() === term); const exactMatchAdic = state.additionalItems.find(a => String(a.claveAsignada).toUpperCase() === term); if (term !== '') { if (exactMatchInv) showInvDetail(exactMatchInv['CLAVE UNICA']); else if (exactMatchAdic) showAdicDetail(exactMatchAdic.id); } currentPage = 1; filterAndRenderInventory(); } else if (activeTab === 'adicionales') renderAdicionales();
+        else if(activeTab==='notas'){window.currentNotesPage=1;selectedNotes.clear();renderNotasTab();}
+        else if(activeTab==='reportes')renderReportSearch();
+    });
+
+    function renderAreaProgress() {
+        const list=document.getElementById('area-progress-list'),summary=document.getElementById('area-progress-summary');
+        list.replaceChildren();
+        const rows=InventoryProgress.areas(state),total=rows.reduce((n,r)=>n+r.total,0),located=rows.reduce((n,r)=>n+r.located,0);
+        summary.textContent=(total?Math.round(located*100/total):0)+'% general';
+        if(!rows.length){const empty=document.createElement('p');empty.className='area-progress-empty';empty.textContent='Carga un listado Excel para ver el avance por área.';list.append(empty);return;}
+        for(const row of rows){
+            const card=document.createElement('article'),heading=document.createElement('h3'),name=document.createElement('p'),count=document.createElement('p'),meter=document.createElement('progress'),percent=document.createElement('strong'),pending=document.createElement('small'),track=document.createElement('div');
+            card.className='area-progress-card';heading.textContent='Área '+row.id;name.className='area-progress-name';name.textContent=row.name||'Sin nombre de área';
+            count.textContent=row.located+' de '+row.total+' ubicados';track.className='area-progress-track';meter.max=row.total||1;meter.value=row.located;meter.setAttribute('aria-label','Avance del área '+row.id);percent.textContent=row.percent+'%';pending.textContent=row.pending+' pendientes';
+            track.append(meter,percent);card.append(heading,name,count,track,pending);list.append(card);
+        }
+    }
+    function renderDashboard() { document.getElementById('total-items').textContent = state.inventory.length; document.getElementById('located-items').textContent = state.inventory.filter(i=>i.UBICADO==='SI').length; document.getElementById('pending-items').textContent = state.inventory.filter(i=>i.UBICADO!=='SI').length; renderAreaProgress(); updateHeaderArea(); }
+
+    function populateFilters() {
+        const areas = [...new Set([...state.inventory.map(i=>i.areaOriginal), ...state.resguardantes.map(u=>u.area)])].sort();
+        const opts = '<option value="all">Todas las áreas</option>' + areas.map(a => `<option value="${escapeHTML(a)}">Área ${escapeHTML(a)} - ${escapeHTML(cleanAreaName(a, NOMBRES_AREAS[a]||''))}</option>`).join('');
+        document.getElementById('area-filter-inventory').innerHTML = opts; document.getElementById('ad-area-filter').innerHTML = opts;
+        document.getElementById('user-area-select').innerHTML = '<option value="">Seleccione un área...</option>' + areas.map(a => `<option value="${escapeHTML(a)}">Área ${escapeHTML(a)} - ${escapeHTML(cleanAreaName(a, NOMBRES_AREAS[a]||''))}</option>`).join('');
+        document.getElementById('edit-user-area').innerHTML = opts; document.getElementById('ad-user-filter').innerHTML = '<option value="all">Todos los usuarios</option>' + state.resguardantes.map(u => `<option value="${escapeHTML(u.name)}">${escapeHTML(u.name)}</option>`).join('');
+        const bookTypes = [...new Set(state.inventory.map(i => i.listadoOriginal))].filter(Boolean).sort(); document.getElementById('book-type-filter').innerHTML = '<option value="all">Todos los tipos de libro</option>' + bookTypes.map(t => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join('');
+    }
+
+    function renderLocChips(container, arr, detailsMap) { container.innerHTML = arr.length ? arr.map((l,i) => { const d = detailsMap[l] || {edificio: 'N/A', piso: 'N/A'}; return `<div class="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-lg p-2 relative"><div><span class="block font-black text-indigo-900 text-sm">${escapeHTML(l)}</span><span class="block text-[10px] text-indigo-600 font-bold uppercase"><i class="fa-solid fa-building mr-1"></i>${escapeHTML(d.edificio)} | <i class="fa-solid fa-layer-group mr-1"></i>${escapeHTML(d.piso)}</span></div><button data-action="danger" type="button" class="rm-loc w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm border" data-idx="${i}"><i class="fa-solid fa-trash pointer-events-none"></i></button></div>`; }).join('') : '<p class="text-gray-400 p-2 text-sm italic border-2 border-dashed border-gray-200 rounded-lg text-center">Ninguna ubicación añadida.</p>'; }
+
+    document.getElementById('user-edificio-select').onchange = e => document.getElementById('user-edificio-manual').classList.toggle('hidden', e.target.value !== 'OTRO MANUAL'); document.getElementById('user-piso-select').onchange = e => document.getElementById('user-piso-manual').classList.toggle('hidden', e.target.value !== 'OTRO MANUAL'); document.getElementById('edit-user-edificio-select').onchange = e => document.getElementById('edit-user-edificio-manual').classList.toggle('hidden', e.target.value !== 'OTRO MANUAL'); document.getElementById('edit-user-piso-select').onchange = e => document.getElementById('edit-user-piso-manual').classList.toggle('hidden', e.target.value !== 'OTRO MANUAL'); document.getElementById('user-location-select').onchange = e => document.getElementById('user-location-manual').classList.toggle('hidden', e.target.value !== 'OTRA'); document.getElementById('edit-user-location-type').onchange = e => document.getElementById('edit-user-location-manual').classList.toggle('hidden', e.target.value !== 'OTRA');
+
+    document.getElementById('add-location-btn').onclick = () => { const eSelect = document.getElementById('user-edificio-select').value; const eMan = document.getElementById('user-edificio-manual').value.trim().toUpperCase(); const edificio = (eSelect === 'OTRO MANUAL' ? eMan : eSelect); const pSelect = document.getElementById('user-piso-select').value; const pMan = document.getElementById('user-piso-manual').value.trim().toUpperCase(); const piso = (pSelect === 'OTRO MANUAL' ? pMan : pSelect); if(!edificio || !piso) return showToast('Completa el edificio y piso', 'warning'); lastSelectedEdificio = eSelect; lastSelectedPiso = pSelect; const t = document.getElementById('user-location-select').value; const m = document.getElementById('user-location-manual').value.trim(); const base = (t === 'OTRA' ? m : t).trim().toUpperCase(); if (!base) return; let maxNum = 0; const checkMax = loc => { const match = loc.match(/^(.*?)\s+(\d+)$/); if(match && match[1].trim().toUpperCase() === base) { const num = parseInt(match[2], 10); if(num > maxNum) maxNum = num; } }; state.resguardantes.forEach(u => (u.locations||[]).forEach(checkMax)); tempUserLocations.forEach(checkMax); const newLocStr = `${base} ${String(maxNum + 1).padStart(2, '0')}`; tempUserLocations.push(newLocStr); tempUserLocationDetails[newLocStr] = { edificio, piso }; renderLocChips(document.getElementById('new-user-locations-list'), tempUserLocations, tempUserLocationDetails); };
+    document.getElementById('new-user-locations-list').onclick = e => { if(e.target.classList.contains('rm-loc')) { showConfirm('Eliminar Ubicación', '¿Seguro que deseas eliminar esta ubicación de la lista?', () => { const strToRemove = tempUserLocations[e.target.dataset.idx]; tempUserLocations.splice(e.target.dataset.idx,1); delete tempUserLocationDetails[strToRemove]; renderLocChips(document.getElementById('new-user-locations-list'), tempUserLocations, tempUserLocationDetails); }); } };
+
+    let tempEditUserLocations = []; let tempEditUserLocationDetails = {};
+    document.getElementById('edit-add-location-btn').onclick = () => { const eSelect = document.getElementById('edit-user-edificio-select').value; const eMan = document.getElementById('edit-user-edificio-manual').value.trim().toUpperCase(); const edificio = (eSelect === 'OTRO MANUAL' ? eMan : eSelect); const pSelect = document.getElementById('edit-user-piso-select').value; const pMan = document.getElementById('edit-user-piso-manual').value.trim().toUpperCase(); const piso = (pSelect === 'OTRO MANUAL' ? pMan : pSelect); if(!edificio || !piso) return showToast('Completa el edificio y piso', 'warning'); lastSelectedEdificio = eSelect; lastSelectedPiso = pSelect; const t = document.getElementById('edit-user-location-type').value; const m = document.getElementById('edit-user-location-manual').value.trim(); const base = (t === 'OTRA' ? m : t).trim().toUpperCase(); if (!base) return; let maxNum = 0; const checkMax = loc => { const match = loc.match(/^(.*?)\s+(\d+)$/); if(match && match[1].trim().toUpperCase() === base) { const num = parseInt(match[2], 10); if(num > maxNum) maxNum = num; } }; state.resguardantes.forEach(u => (u.locations||[]).forEach(checkMax)); tempEditUserLocations.forEach(checkMax); const newLocStr = `${base} ${String(maxNum + 1).padStart(2, '0')}`; tempEditUserLocations.push(newLocStr); tempEditUserLocationDetails[newLocStr] = { edificio, piso }; renderLocChips(document.getElementById('edit-user-locations-list'), tempEditUserLocations, tempEditUserLocationDetails); };
+    document.getElementById('edit-user-locations-list').onclick = e => { if(e.target.classList.contains('rm-loc')) { showConfirm('Eliminar Ubicación', '¿Seguro que deseas quitar esta ubicación? Los bienes asociados podrían quedar huérfanos.', () => { const strToRemove = tempEditUserLocations[e.target.dataset.idx]; tempEditUserLocations.splice(e.target.dataset.idx,1); delete tempEditUserLocationDetails[strToRemove]; renderLocChips(document.getElementById('edit-user-locations-list'), tempEditUserLocations, tempEditUserLocationDetails); }); } };
+
+    document.getElementById('create-user-btn').onclick = () => {
+        const n = document.getElementById('user-name').value.trim();
+        const a = document.getElementById('user-area-select').value;
+        if(!n || !a || !tempUserLocations.length) return showToast('Completa nombre, área y al menos una ubicación','error');
+
+        const proceedCreate = () => {
+            saveSnapshot();
+            const u = { id: generateUUID(), name: n, area: a, locationWithId: tempUserLocations[0], locations: [...tempUserLocations], locationDetails: {...tempUserLocationDetails} };
+            state.resguardantes.push(u); state.activeResguardante = u; recalculateLocationCounts(); state.suggestedNames = [...new Set([...(state.suggestedNames||[]), n])];
+            saveState(); renderUsers(); updateBanner(); populateFilters();
+            document.getElementById('user-name').value=''; document.getElementById('user-edificio-select').value = lastSelectedEdificio; document.getElementById('user-piso-select').value = lastSelectedPiso; document.getElementById('user-edificio-manual').classList.toggle('hidden', lastSelectedEdificio !== 'OTRO MANUAL'); document.getElementById('user-piso-manual').classList.toggle('hidden', lastSelectedPiso !== 'OTRO MANUAL'); tempUserLocations=[]; tempUserLocationDetails={}; renderLocChips(document.getElementById('new-user-locations-list'), [], {}); showToast(`Usuario ${escapeHTML(n)} creado.`); focusSearch();
+        };
+
+        const existingUser = state.resguardantes.find(u => u.name.toLowerCase() === n.toLowerCase());
+        if (existingUser) {
+            showConfirm('Usuario Duplicado', `El usuario "${escapeHTML(n)}" ya está registrado en el área ${existingUser.area}. ¿Deseas registrar otro usuario con el mismo nombre?`, proceedCreate);
+        } else {
+            proceedCreate();
+        }
+    };
+
+    function renderUsers() {
+        const term = document.getElementById('global-search-input').value.toLowerCase(); const list = document.getElementById('registered-users-list');
+        const filtered = state.resguardantes.filter(u => u.name.toLowerCase().includes(term) || (u.locations||[]).join(' ').toLowerCase().includes(term));
+        document.getElementById('user-count-badge').textContent = filtered.length;
+        list.innerHTML = filtered.map(u => {
+            const nombreArea = cleanAreaName(u.area, NOMBRES_AREAS[u.area] || 'Área Desconocida'); const isActive = state.activeResguardante?.id === u.id; const btnText = isActive ? '<i class="fa-solid fa-user-check mr-1"></i>Activo' : 'Activar';
+            const userLocations=[...new Set((u.locations||[u.locationWithId]).filter(Boolean))];
+            const locTags=userLocations.length?`<span class="user-location-summary" title="${escapeHTML(userLocations.join(' / '))}"><span>${escapeHTML(userLocations[0])}</span>${userLocations.length>1?`<b>+${userLocations.length-1} más</b>`:''}</span>`:'';
+            return `<div class="flex flex-col md:flex-row justify-between items-start md:items-center p-3 border rounded-xl bg-white shadow-sm mb-2 ${isActive ? 'border-green-500 bg-green-50 ring-2 ring-green-200' : 'hover:border-indigo-300'}"><div class="cursor-pointer mb-3 md:mb-0 w-full md:flex-1 min-w-0 pr-2" onclick="showUserDetail(${inlineValue(u.id)})"><p class="font-bold text-base text-gray-800 truncate" title="${escapeHTML(u.name)}">${escapeHTML(u.name)}</p><p class="text-sm text-gray-500 font-medium truncate"><i class="fa-solid fa-briefcase mr-1"></i>Área ${escapeHTML(u.area)} - ${escapeHTML(nombreArea)}</p><div class="mt-1 flex flex-col gap-0.5 w-full">${locTags}</div></div><div class="flex flex-shrink-0 flex-wrap gap-2 w-full md:w-auto grid grid-cols-4 md:flex items-center"><button data-action="save" class="w-full md:w-auto py-2.5 px-4 font-bold rounded-xl text-sm" data-user-active="${isActive}" onclick="activateUser(${inlineValue(u.id)})">${btnText}</button><button data-action="photo" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Foto" onclick="showPhoto('user', ${inlineValue(u.id)})"><i class="fa-solid fa-camera"></i></button><button data-action="edit" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Editar" onclick="openEditUser(${inlineValue(u.id)})"><i class="fa-solid fa-pencil"></i></button><button data-action="danger" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" title="Eliminar" onclick="deleteUser(${inlineValue(u.id)})"><i class="fa-solid fa-trash"></i></button></div></div>`
+        }).join('');
+    }
+
+    window.activateUser = id => { captureAdditionalDraft();state.activeResguardante = state.resguardantes.find(u=>u.id===id); updateBanner(); renderUsers();restoreAdditionalDraft(); window.scrollTo(0,0); focusSearch(); };
+    async function commitUserChange(next,label){
+        await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot(label);state=next;recalculateLocationCounts();renderUsers();populateFilters();filterAndRenderInventory();renderAdicionales();updateBanner();updateDatalists();
+    }
+    window.deleteUser=id=>{let next;try{next=InventorySafeChanges.removeUser(state,id);}catch(e){return showToast(escapeHTML(e.message),'warning');}showConfirm('Eliminar usuario','Se eliminará el usuario sin bienes asignados. ¿Continuar?',async()=>{const overlay=document.getElementById('loading-overlay');overlay.classList.add('show');try{await commitUserChange(InventorySafeChanges.removeUser(state,id),'Eliminar usuario');showToast('Usuario eliminado','success');}catch(e){showToast(escapeHTML(e.message),'error');}finally{overlay.classList.remove('show');}});};
+
+
+    function updateActiveUserLocationSelect() {
+        const select = document.getElementById('active-user-location-select'); if(!state.activeResguardante) return;
+        const uName = state.activeResguardante.name; const currentVal = select.value;
+        select.innerHTML = (state.activeResguardante.locations||[state.activeResguardante.locationWithId]).map(l => { const invCount = state.inventory.filter(i => i.UBICADO==='SI' && i['NOMBRE DE USUARIO']===uName && i.ubicacionEspecifica===l).length; const adCount = state.additionalItems.filter(i => i.usuario===uName && i.ubicacionEspecifica===l).length; return `<option value="${escapeHTML(l)}">${escapeHTML(l)} (${invCount} + ${adCount})</option>`; }).join('');
+        if(currentVal && Array.from(select.options).some(o=>o.value===currentVal)) select.value = currentVal;
+        const updateBannerTag = () => { document.getElementById('active-user-banner-tag').textContent = getNomenclature(state.activeResguardante, select.value); }; select.onchange = updateBannerTag; updateBannerTag();
+    }
+
+    function updateBanner() {
+        const b = document.getElementById('active-user-banner');
+        if(state.activeResguardante) {
+            document.getElementById('active-user-banner-name').textContent = state.activeResguardante.name;
+            const areaName = cleanAreaName(state.activeResguardante.area, NOMBRES_AREAS[state.activeResguardante.area] || ''); document.getElementById('active-user-banner-area').textContent = `ÁREA ${state.activeResguardante.area} ${areaName ? '- ' + areaName : ''}`;
+            updateActiveUserLocationSelect(); b.classList.remove('hidden');
+        } else b.classList.add('hidden');
+    }
+    document.getElementById('deactivate-user-btn').onclick = () => { state.activeResguardante=null; updateBanner(); renderUsers(); };
+
+
+    let editingLocation=null;
+    window.openLocationEditor=(id,location)=>{
+        const user=state.resguardantes.find(u=>u.id===id);if(!user)return;
+        editingLocation={id,location};const d=user.locationDetails?.[location]||{};
+        document.getElementById('location-edit-user').textContent=user.name+' · Área '+user.area;
+        document.getElementById('location-edit-name').value=location;
+        document.getElementById('location-edit-building').value=d.edificio||'';
+        document.getElementById('location-edit-floor').value=d.piso||'';
+        document.getElementById('location-edit-error').textContent='';
+        document.getElementById('location-edit-modal').classList.add('show');document.getElementById('location-edit-name').focus();
+    };
+    document.getElementById('location-edit-form').onsubmit=async e=>{
+        e.preventDefault();if(!editingLocation)return;
+        const {id,location}=editingLocation,button=document.getElementById('location-edit-save'),overlay=document.getElementById('loading-overlay');button.disabled=true;overlay.classList.add('show');document.getElementById('location-edit-error').textContent='';
+        try{
+            const plan=InventoryLocationEdit.edit(state,id,location,{name:document.getElementById('location-edit-name').value,edificio:document.getElementById('location-edit-building').value,piso:document.getElementById('location-edit-floor').value});
+            await photoDB.flush();const related=[];
+            if(plan.sourcePhoto!==plan.targetPhoto){const photo=await photoDB.getItem('photos','location-'+plan.sourcePhoto),target=await photoDB.getItem('photos','location-'+plan.targetPhoto);if(target){let same=false;if(photo&&photo.size===target.size){const a=new Uint8Array(await photo.arrayBuffer()),b=new Uint8Array(await target.arrayBuffer());same=a.every((v,i)=>v===b[i]);}if(!same)throw Error('Ya existe una fotografía diferente con el nombre de destino. Elige otro nombre para conservar ambas.');}if(photo){related.push({store:'photos',key:'location-'+plan.targetPhoto,value:photo});plan.next.locationPhotos[plan.targetPhoto]=true;}}
+            const nextDrafts=structuredClone(drafts);if(nextDrafts.additional[id]?.location===location)nextDrafts.additional[id].location=plan.name;
+            related.push({store:'appData',key:'captureDrafts',value:nextDrafts});
+            const activeSelect=document.getElementById('active-user-location-select'),activeValue=activeSelect.value;
+            await photoDB.setItem('appData','mainState',InventoryData.clean(plan.next),related);
+            saveSnapshot('Editar ubicación: '+location);state=plan.next;drafts=nextDrafts;recalculateLocationCounts();renderUsers();populateFilters();filterAndRenderInventory();renderAdicionales();renderDashboard();updateBanner();populateTransferUsers();updateReportLocations();
+            if(state.activeResguardante?.id===id&&activeValue===location)activeSelect.value=plan.name;
+            document.getElementById('location-edit-modal').classList.remove('show');showUserDetail(id);editingLocation=null;showToast('Ubicación actualizada y guardada','success');
+        }catch(error){document.getElementById('location-edit-error').textContent=error.message;}
+        finally{button.disabled=false;overlay.classList.remove('show');}
+    };
+
+    window.showUserDetail = id => {
+        const u = state.resguardantes.find(x=>x.id===id); const areaName = cleanAreaName(u.area, NOMBRES_AREAS[u.area] || 'Área Desconocida');
+        document.getElementById('user-detail-view-name').textContent = u.name; document.getElementById('user-detail-view-area').textContent = `${u.area} - ${areaName}`;
+
+        document.getElementById('user-detail-view-location').innerHTML = (u.locations||[]).map(l => {
+            const d = u.locationDetails && u.locationDetails[l] ? u.locationDetails[l] : {edificio:'N/A', piso:'N/A'};
+            const photoId = `${u.id}|${l}`;
+            const hasPhoto = state.locationPhotos && state.locationPhotos[photoId];
+            const btnColor = hasPhoto ? 'bg-indigo-100 text-indigo-600 border border-indigo-200' : 'bg-white text-gray-400 border border-gray-300 hover:text-indigo-500';
+
+            return `<div class="border-b border-gray-200 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0 flex justify-between items-center gap-3">
+                <div class="flex-grow min-w-0">
+                    <span class="font-black text-gray-800 text-base block"><i class="fa-solid fa-map-pin mr-2 text-indigo-500"></i>${escapeHTML(l)}</span>
+                    <span class="text-xs font-bold text-gray-500 uppercase ml-5">${escapeHTML(d.edificio)} - ${escapeHTML(d.piso)}</span>
+                    <span class="block text-[10px] font-mono text-indigo-600 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 mt-1 truncate">${escapeHTML(getNomenclature(u, l))}</span>
+                </div>
+                <button data-action="edit" type="button" class="px-3 py-2 rounded-xl font-bold text-sm" onclick="openLocationEditor(${inlineValue(u.id)}, ${inlineValue(l)})" title="Editar ubicación">Editar</button>
+                <button data-action="photo" class="w-11 h-11 flex items-center justify-center rounded-xl transition-colors shadow-sm ${btnColor} flex-shrink-0" onclick="showPhoto('location', ${inlineValue(photoId)})" title="${hasPhoto ? 'Ver Foto de Ubicación' : 'Tomar Foto de Ubicación'}">
+                    <i class="fa-solid fa-camera text-lg"></i>
+                </button>
+            </div>`;
+        }).join('');
+        document.getElementById('user-detail-view-modal').classList.add('show');
+    };
+
+    window.openEditUser = id => {
+        const u = state.resguardantes.find(x=>x.id===id); document.getElementById('edit-user-name').value = u.name; document.getElementById('edit-user-area').value = u.area;
+        document.getElementById('edit-user-edificio-select').value = lastSelectedEdificio; document.getElementById('edit-user-piso-select').value = lastSelectedPiso; document.getElementById('edit-user-edificio-manual').classList.toggle('hidden', lastSelectedEdificio !== 'OTRO MANUAL'); document.getElementById('edit-user-piso-manual').classList.toggle('hidden', lastSelectedPiso !== 'OTRO MANUAL');
+        tempEditUserLocations = [...(u.locations||[])]; tempEditUserLocationDetails = JSON.parse(JSON.stringify(u.locationDetails || {})); renderLocChips(document.getElementById('edit-user-locations-list'), tempEditUserLocations, tempEditUserLocationDetails); document.getElementById('edit-user-save-btn').dataset.id = id; document.getElementById('edit-user-modal').classList.add('show');
+    };
+
+    document.getElementById('edit-user-save-btn').onclick=()=>{
+        const id=document.getElementById('edit-user-save-btn').dataset.id,u=state.resguardantes.find(u=>u.id===id);
+        const values={name:document.getElementById('edit-user-name').value,area:document.getElementById('edit-user-area').value,locations:[...tempEditUserLocations],locationDetails:structuredClone(tempEditUserLocationDetails)};
+        const removed=(u.locations||[]).filter(l=>!values.locations.includes(l));const affected=[...state.inventory.filter(i=>i['NOMBRE DE USUARIO']===u.name),...state.additionalItems.filter(i=>i.resguardanteId?i.resguardanteId===id:i.usuario===u.name)].filter(i=>removed.includes(i.ubicacionEspecifica));
+        if(!values.name.trim())return showToast('El nombre es obligatorio','warning');
+        const save=async action=>{const overlay=document.getElementById('loading-overlay');overlay.classList.add('show');try{const next=InventorySafeChanges.editUser(state,id,values,action);await commitUserChange(next,'Editar usuario y ubicaciones');document.getElementById('edit-user-modal').classList.remove('show');document.getElementById('migration-modal').classList.remove('show');showToast('Perfil actualizado y guardado','success');}catch(e){showToast(escapeHTML(e.message),'error');}finally{overlay.classList.remove('show');}};
+        if(!affected.length)return save();
+        document.getElementById('mig-count').textContent=affected.length;document.getElementById('mig-new-loc-select').replaceChildren(...values.locations.map(l=>new Option(l,l)));
+        document.getElementById('migration-modal').classList.add('show');document.getElementById('mig-confirm-btn').onclick=()=>{const loc=document.getElementById('mig-new-loc-select').value;if(!loc)return showToast('Selecciona una ubicación de destino','warning');save(loc);};document.getElementById('mig-delete-btn').onclick=()=>save('pending');
+    };
+
+
+    let currentPage = 1; const itemsPerPage = 30; let filtered = [];
+    function addToSearchHistory(item) { if (!item || item.trim() === '') return; searchHistory = searchHistory.filter(i => i !== item); searchHistory.unshift(item); if (searchHistory.length > 5) searchHistory.pop(); renderSearchHistory(); }
+    function renderSearchHistory() { const container = document.getElementById('search-history-container'); if (!container) return; container.innerHTML = searchHistory.map(term => `<span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-bold cursor-pointer shadow-sm hover:bg-indigo-200 transition-colors" onclick="applySearch(${inlineValue(term)})"><i class="fa-solid fa-clock-rotate-left mr-1"></i>${escapeHTML(term)}</span>`).join(''); }
+    window.applySearch = (term) => { document.getElementById('global-search-input').value = term; currentPage = 1; filterAndRenderInventory(); };
+
+    function filterAndRenderInventory() {
+        const term = document.getElementById('global-search-input').value.toLowerCase(); const stat = document.getElementById('status-filter').value; const area = document.getElementById('area-filter-inventory').value; const bookType = document.getElementById('book-type-filter').value; const userFilter = document.getElementById('user-filter-inventory') ? document.getElementById('user-filter-inventory').value : 'all'; const locFilter = document.getElementById('location-filter-inventory') ? document.getElementById('location-filter-inventory').value : 'all';
+        let combinedInv = state.inventory.map(i => ({...i, _type: 'inv'}));
+        let combinedAdic = state.additionalItems.map(a => { const adicUser = state.resguardantes.find(u => u.name === a.usuario); return { _type: 'adic', _id: a.id, 'CLAVE UNICA': a.claveAsignada || 'S/C', DESCRIPCION: a.descripcion, DESCRripcion: a.descripcion, MARCA: a.marca, MODELO: a.modelo, SERIE: a.serie, 'NOMBRE DE USUARIO': a.usuario, UBICADO: 'SI', areaOriginal: adicUser ? adicUser.area : 'ADICIONAL', ubicacionEspecifica: a.ubicacionEspecifica, listadoOriginal: 'Adicional', ...InventoryTeam.savedAttribution(a) }; });
+        filtered = [...combinedInv, ...combinedAdic].filter(i => (!term || [i['CLAVE UNICA'], i.DESCRIPCION, i.DESCRripcion, i.SERIE].some(f=>String(f||'').toLowerCase().includes(term))) && (stat==='all' || i.UBICADO===stat) && (area==='all' || i.areaOriginal===area) && (bookType==='all' || i.listadoOriginal===bookType) && (userFilter==='all' || i['NOMBRE DE USUARIO'] === userFilter) && (locFilter==='all' || i.ubicacionEspecifica === locFilter));
+        document.getElementById('inventory-table-body').innerHTML = filtered.slice((currentPage-1)*itemsPerPage, currentPage*itemsPerPage).map(i => {
+            const isAdic = i._type === 'adic'; const c = isAdic ? i._id : i['CLAVE UNICA']; const assignedUser = state.resguardantes.find(u => u.name === i['NOMBRE DE USUARIO']); const userAreaText = assignedUser ? `(A${assignedUser.area})` : ''; const errorArea = !isAdic && InventoryAssetStatus.area(i, assignedUser).mismatch; const bgClass = isAdic ? 'bg-yellow-50' : (i.UBICADO==='SI' ? 'bg-green-50' : 'bg-white'); const tagAdicional = isAdic ? `<span class="px-1.5 py-0.5 bg-yellow-200 text-yellow-800 text-[10px] rounded font-bold ml-1">ADICIONAL</span>` : ''; const tagReetiquetado = !isAdic && i.RE_ETIQUETADO === 'SI' ? `<span class="px-1.5 py-0.5 bg-blue-200 text-blue-800 text-[10px] rounded font-bold ml-1"><i class="fa-solid fa-tags"></i> REETIQUETADO</span>` : '';
+            return `<tr class="hover:bg-gray-100 transition-colors border-b ${bgClass}" data-clave="${escapeHTML(c)}"><td class="px-3 py-3 text-center">${isAdic ? `` : `<input type="checkbox" class="inv-cb">`}</td><td class="px-3 py-3 cursor-pointer" onclick="${isAdic ? `showAdicDetail(${inlineValue(i._id)})` : `showInvDetail(${inlineValue(c)})`}"><p class="font-extrabold text-base text-gray-800">${escapeHTML(i.DESCRIPCION||i.DESCRripcion).substring(0,40)}... ${tagAdicional} ${tagReetiquetado}</p><p class="font-mono text-sm text-indigo-600 font-bold mt-0.5">CLV: ${escapeHTML(isAdic ? i['CLAVE UNICA'] : c)}</p></td><td class="px-3 py-3 text-sm text-gray-600"><p><span class="font-bold">M:</span> ${escapeHTML(i.MARCA||'-')} <span class="mx-1">|</span> <span class="font-bold">Mod:</span> ${escapeHTML(i.MODELO||'-')}</p><p class="font-mono mt-0.5 break-all"><span class="font-bold font-sans">S:</span> ${escapeHTML(i.SERIE||'-')}</p></td><td class="px-3 py-3">${i.UBICADO==='SI' ? `<p class="font-bold text-green-700 text-sm"><i class="fa-solid fa-check-circle mr-1"></i>${escapeHTML(i['NOMBRE DE USUARIO'])} <span class="text-xs font-normal text-gray-500">${escapeHTML(userAreaText)}</span></p><p class="text-xs font-bold text-indigo-600 mt-0.5"><i class="fa-solid fa-location-dot mr-1"></i>${escapeHTML(i.ubicacionEspecifica||'')}</p>${i.ubicadoPor ? `<p class="text-[10px] text-gray-500 font-semibold mt-0.5 uppercase"><i class="fa-solid fa-user-check mr-1"></i>Ubicado por: ${escapeHTML(InventoryTeam.label(i.ubicadoPor,i.ubicadoPorNumero))}<br>Auxiliado por: ${escapeHTML(InventoryTeam.label(i.auxiliadoPor,i.auxiliadoPorNumero))}</p>` : ''}${errorArea ? `<span class="inline-block mt-0.5 bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded">Fuera Área (${escapeHTML(i.areaOriginal)})</span>` : ''}` : `<span class="px-2 py-1 bg-gray-200 text-gray-600 font-bold rounded-md text-xs">Pendiente</span>`}</td><td class="px-3 py-3"><div class="flex justify-center space-x-2">${isAdic ? `<button data-action="photo" class="touch-icon ${state.additionalPhotos[i._id]?'bg-indigo-100':'bg-gray-100'}" onclick="showPhoto('additional',${inlineValue(i._id)})"><i class="fa-solid fa-camera"></i></button>` : `<button data-action="note" class="touch-icon ${state.notes[c]?'bg-yellow-100':'bg-gray-100'}" onclick="showNoteModal(${inlineValue(c)})"><i class="fa-solid fa-note-sticky"></i></button><button data-action="photo" class="touch-icon ${state.photos[c]?'bg-indigo-100':'bg-gray-100'}" onclick="showPhoto('inventory',${inlineValue(c)})"><i class="fa-solid fa-camera"></i></button>`}</div></td></tr>`;
+        }).join('');
+        document.getElementById('page-info').textContent = `Página ${currentPage} de ${Math.ceil(filtered.length/itemsPerPage)||1}`;
+    }
+
+    document.getElementById('status-filter').onchange = () => {currentPage=1; filterAndRenderInventory();}; document.getElementById('book-type-filter').onchange = () => {currentPage=1; filterAndRenderInventory();};
+    document.getElementById('area-filter-inventory').onchange = (e) => { const selectedArea = e.target.value; const userSelect = document.getElementById('user-filter-inventory'); const locSelect = document.getElementById('location-filter-inventory'); if(userSelect && locSelect) { let usersToDisplay = selectedArea !== 'all' ? state.resguardantes.filter(u => u.area === selectedArea) : state.resguardantes; userSelect.innerHTML = '<option value="all">Todos los usuarios</option>' + usersToDisplay.map(u => `<option value="${escapeHTML(u.name)}">${escapeHTML(u.name)}</option>`).join(''); locSelect.innerHTML = '<option value="all">Todas las ubicaciones</option>'; } currentPage=1; filterAndRenderInventory(); };
+    if(document.getElementById('user-filter-inventory')) { document.getElementById('user-filter-inventory').onchange = (e) => { const locSelect = document.getElementById('location-filter-inventory'); if (e.target.value === 'all') locSelect.innerHTML = '<option value="all">Todas las ubicaciones</option>'; else { const user = state.resguardantes.find(u => u.name === e.target.value); if (user && user.locations) locSelect.innerHTML = '<option value="all">Todas sus ubicaciones</option>' + user.locations.map(l => `<option value="${escapeHTML(l)}">${escapeHTML(l)}</option>`).join(''); } currentPage=1; filterAndRenderInventory(); }; }
+    if(document.getElementById('location-filter-inventory')) document.getElementById('location-filter-inventory').onchange = () => { currentPage=1; filterAndRenderInventory(); };
+
+    document.getElementById('nav-clear-search-btn').onclick = () => { document.getElementById('global-search-input').value = ''; document.getElementById('status-filter').value = 'all'; document.getElementById('area-filter-inventory').value = 'all'; document.getElementById('book-type-filter').value = 'all'; if(document.getElementById('user-filter-inventory')) document.getElementById('user-filter-inventory').value = 'all'; if(document.getElementById('location-filter-inventory')) { document.getElementById('location-filter-inventory').innerHTML = '<option value="all">Todas las ubicaciones</option>'; document.getElementById('location-filter-inventory').value = 'all'; } currentPage = 1; filterAndRenderInventory(); };
+    document.getElementById('prev-page-btn').onclick = () => {if(currentPage>1){currentPage--; filterAndRenderInventory();}}; document.getElementById('next-page-btn').onclick = () => {if(currentPage<Math.ceil(filtered.length/itemsPerPage)){currentPage++; filterAndRenderInventory();}}; document.getElementById('select-all-checkbox').onchange = e => document.querySelectorAll('.inv-cb').forEach(c=>c.checked=e.target.checked);
+
+    function doAction(action) {
+        const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes', 'warning'); if(action!=='desubicar' && !state.activeResguardante) return showToast('¡Activa un usuario primero!', 'error');
+
+        if (action === 'desubicar') {
+            showConfirm('Desubicar Bienes', '¿Seguro que deseas quitar la asignación de estos bienes?', () => { executeGlobalAction('desubicar', cbs); });
+        } else {
+            const hasLocated = Array.from(cbs).some(cb => { const clv = cb.closest('tr').dataset.clave; const i = state.inventory.find(x=>x['CLAVE UNICA']===clv); return i && i.UBICADO === 'SI'; });
+            if (hasLocated) { showConfirm('Reasignar Bienes', 'Algunos bienes ya están asignados a un usuario. ¿Deseas reasignarlos?', () => { executeGlobalAction(action, cbs); }); }
+            else executeGlobalAction(action, cbs);
+        }
+    }
+
+    function executeGlobalAction(action, cbs) {
+        saveSnapshot();
+        cbs.forEach(cb => { const claveElement = cb.closest('tr').dataset.clave; const i = state.inventory.find(x=>x['CLAVE UNICA'] === claveElement); if(i) { if(action==='desubicar') { i.UBICADO='NO'; i.RE_ETIQUETADO='NO'; i['NOMBRE DE USUARIO']=''; i.ubicacionEspecifica=''; Object.assign(i, InventoryTeam.clear()); } else { i.UBICADO='SI'; i.RE_ETIQUETADO='NO'; i['NOMBRE DE USUARIO']=state.activeResguardante.name; i.ubicacionEspecifica = document.getElementById('active-user-location-select').value || state.activeResguardante.locationWithId; i.areaIncorrecta = i.areaOriginal !== state.activeResguardante.area; Object.assign(i, InventoryTeam.attribution(state)); addToSearchHistory(i['CLAVE UNICA']); } } });
+        saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); document.getElementById('select-all-checkbox').checked = false; showToast(`Aplicado a ${cbs.length} bienes.`);
+    }
+
+    document.getElementById('nav-ubicado-btn').onclick = ()=>doAction('ubicar'); document.getElementById('nav-desubicar-btn').onclick = ()=>doAction('desubicar');
+
+    document.getElementById('nav-bulk-note-btn').onclick = () => { const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para nota', 'warning'); document.getElementById('note-textarea').value = ''; document.getElementById('note-save-btn').dataset.c = 'BULK';document.getElementById('note-draft-status').textContent='Nota masiva: este borrador no se conserva al cerrar la app.'; renderNoteSuggestions(); document.getElementById('notes-modal').classList.add('show'); setTimeout(() => document.getElementById('note-textarea').focus(), 100); };
+    document.getElementById('nav-bulk-photo-btn').onclick = () => { const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para foto', 'warning'); document.getElementById('photo-input').dataset.t = 'inventory-bulk'; document.getElementById('photo-input').dataset.bulkIds = Array.from(cbs).map(cb => cb.closest('tr').dataset.clave).join(','); document.getElementById('photo-view-container').classList.add('hidden'); document.getElementById('photo-upload-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); document.getElementById('photo-modal-title').textContent = `Foto Masiva (${cbs.length} bienes)`; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-camera-retro mr-2"></i> Capturar a Todos'; startCamera(); document.getElementById('photo-modal').classList.add('show'); };
+    document.getElementById('ad-bulk-autofill-btn').onclick = () => { if (!state.additionalItems || state.additionalItems.length === 0) return showToast('No hay adicionales.', 'warning'); saveSnapshot(); let updatedCount = 0; state.additionalItems.forEach(item => { if (item.serie) { const perfil = matchMagicProfile(String(item.serie).toUpperCase().trim()); if (perfil) { let changed = false; if (item.descripcion !== perfil.desc) { item.descripcion = perfil.desc; changed = true; } if (item.marca !== perfil.marca) { item.marca = perfil.marca; changed = true; } if (item.modelo !== perfil.modelo) { item.modelo = perfil.modelo; changed = true; } if (item.posesion !== (perfil.posesion||'Cámara')) { item.posesion = perfil.posesion||'Cámara'; if(item.posesion === 'Arrendamiento') item.numContrato = 'LXVIDG AJ- 070/2024'; changed = true; } if (changed) updatedCount++; } } }); if (updatedCount > 0) { recalculateAdicionalesKeys(); saveState(); renderAdicionales(); filterAndRenderInventory(); showToast(`Autocompletados ${updatedCount} bienes.`, 'success'); } else showToast('Sin coincidencias.', 'info'); };
+
+    document.getElementById('adicional-form').onsubmit=e=>e.preventDefault();
+    document.getElementById('add-adicional-btn').onclick=()=>{try{askEntryAndSave(readAdditional('ad'));}catch(error){showToast(error.message,'warning');}};
+    window.saveAdic=item=>persistAdditional(item);
+
+    function updateDatalists() { const descripciones = [...new Set([...state.additionalItems.map(i=>i.descripcion),...state.inventory.map(i=>i.DESCRIPCION||i.DESCRripcion),...state.perfilesMagicos.map(i=>i.desc)])].filter(Boolean); const marcas = [...new Set([...state.additionalItems.map(i=>i.marca),...state.inventory.map(i=>i.MARCA)])].filter(Boolean); const modelos = [...new Set([...state.additionalItems.map(i=>i.modelo),...state.inventory.map(i=>i.MODELO)])].filter(Boolean); let descDatalist = document.getElementById('lista-descripciones'); if (!descDatalist) { descDatalist = document.createElement('datalist'); descDatalist.id = 'lista-descripciones'; document.body.appendChild(descDatalist); } descDatalist.innerHTML = descripciones.map(d=>`<option value="${escapeHTML(d)}">`).join(''); let marcaDatalist = document.getElementById('lista-marcas'); if (!marcaDatalist) { marcaDatalist = document.createElement('datalist'); marcaDatalist.id = 'lista-marcas'; document.body.appendChild(marcaDatalist); } marcaDatalist.innerHTML = marcas.map(m=>`<option value="${escapeHTML(m)}">`).join(''); let modeloDatalist = document.getElementById('lista-modelos'); if (!modeloDatalist) { modeloDatalist = document.createElement('datalist'); modeloDatalist.id = 'lista-modelos'; document.body.appendChild(modeloDatalist); } modeloDatalist.innerHTML = modelos.map(m=>`<option value="${escapeHTML(m)}">`).join(''); let respDatalist = document.getElementById('lista-responsables'); if (!respDatalist) { respDatalist = document.createElement('datalist'); respDatalist.id = 'lista-responsables'; document.body.appendChild(respDatalist); } respDatalist.innerHTML = (state.suggestedNames||[]).map(n=>`<option value="${escapeHTML(n)}">`).join(''); }
+
+    function renderAdicionales() {
+        const areaFilter = document.getElementById('ad-area-filter').value; const userFilter = document.getElementById('ad-user-filter').value; const term = document.getElementById('global-search-input').value.toLowerCase().trim(); let list = state.additionalItems;
+        if(areaFilter !== 'all') { const usersInArea = state.resguardantes.filter(u => u.area === areaFilter).map(u => u.name); list = list.filter(i => usersInArea.includes(i.usuario)); }
+        if(userFilter !== 'all') list = list.filter(i => i.usuario === userFilter);
+        if(term) { list = list.filter(i => String(i.descripcion||'').toLowerCase().includes(term) || String(i.claveAsignada||'').toLowerCase().includes(term) || String(i.serie||'').toLowerCase().includes(term) || String(i.marca||'').toLowerCase().includes(term) || String(i.modelo||'').toLowerCase().includes(term) ); }
+        document.getElementById('additional-items-total').textContent = list.length;
+        document.getElementById('adicionales-list').innerHTML = list.map(i => {
+            const arrendamientoTag = i.posesion === 'Arrendamiento' ? `<span class="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-800 text-[10px] rounded font-bold uppercase"><i class="fa-solid fa-file-contract mr-1"></i>Arrendamiento ${escapeHTML(i.numContrato ? '('+i.numContrato+')':'')}</span>` : '';
+            const formatoTag=i.personal==='Si'?'<span class="entry-format '+(i.tieneFormatoEntrada?'entry-yes':'entry-no')+'" role="img" aria-label="'+(i.tieneFormatoEntrada?'Con formato de entrada':'Sin formato de entrada')+'" title="'+(i.tieneFormatoEntrada?'Con formato de entrada':'Sin formato de entrada')+'">'+(i.tieneFormatoEntrada?'✓':'!')+'</span>':'';
+            const showMatchBtn = (i.posesion === 'Cámara' || !i.posesion) && i.personal !== 'Si'; const matchBtnHtml = showMatchBtn ? `<button data-action="edit" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" onclick="openMatchModal(${inlineValue(i.id)})"><i class="fa-solid fa-link"></i></button>` : '';
+            let claveHtml = escapeHTML(i.claveAsignada || '-'); if (i.claveAsignada && i.claveAsignada.startsWith('CD-')) { claveHtml = `<span class="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200"><i class="fa-solid fa-tag mr-1"></i>${escapeHTML(i.claveAsignada)}</span>`; }
+            return `<div class="p-3 border-l-4 rounded-xl bg-white shadow-sm flex flex-col md:flex-row justify-between items-center ${i.personal==='Si'?'border-yellow-400':(i.posesion==='Arrendamiento'?'border-blue-500':'border-green-400')} mb-2"><div class="mb-2 md:mb-0 cursor-pointer w-full md:flex-1 min-w-0 pr-2" onclick="showAdicDetail(${inlineValue(i.id)})"><p class="font-bold text-base text-gray-800 truncate">${escapeHTML(i.descripcion)} ${formatoTag}${arrendamientoTag}</p><p class="text-sm text-gray-500 font-medium leading-tight truncate mt-1"><span class="font-bold">Clv:</span> ${claveHtml} <span class="mx-1">|</span> <span class="font-bold">Mod:</span> ${escapeHTML(i.modelo||'-')} <span class="mx-1">|</span> <span class="font-bold">Ser:</span> ${escapeHTML(i.serie||'-')}</p><p class="text-xs text-indigo-700 font-bold leading-tight truncate mt-1"><i class="fa-solid fa-user mr-1"></i>${escapeHTML(i.usuario)} <span class="text-gray-400 font-normal ml-1">(${escapeHTML(i.ubicacionEspecifica||'')})</span></p></div><div class="flex flex-shrink-0 flex-wrap gap-2 w-full md:w-auto grid grid-cols-5 md:flex items-center"><button data-action="info" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" onclick="duplicateAdic(${inlineValue(i.id)})"><i class="fa-solid fa-copy"></i></button>${matchBtnHtml}<button data-action="photo" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" onclick="showPhoto('additional', ${inlineValue(i.id)})"><i class="fa-solid fa-camera"></i></button><button data-action="edit" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" onclick="editAdic(${inlineValue(i.id)})"><i class="fa-solid fa-pen-to-square"></i></button><button data-action="danger" class="w-full md:w-auto py-2.5 px-3 font-bold rounded-xl text-sm" onclick="delAdic(${inlineValue(i.id)})"><i class="fa-solid fa-trash"></i></button></div></div>`;
+        }).join('');
+    }
+    document.getElementById('ad-area-filter').onchange = renderAdicionales; document.getElementById('ad-user-filter').onchange = renderAdicionales;
+
+    window.duplicateAdic = id => {
+        const i = state.additionalItems.find(x=>x.id===id); if(!i) return;
+        document.getElementById('ad-clave').value = '';
+        document.getElementById('ad-desc').value = i.descripcion || '';
+        document.getElementById('ad-marca').value = i.marca || '';
+        document.getElementById('ad-modelo').value = i.modelo || '';
+        document.getElementById('ad-serie').value = ''; autoValues.ad={};
+
+        if(document.getElementById('ad-posesion')) {
+            document.getElementById('ad-posesion').value = i.posesion || 'Cámara';
+            let dynVal = '';
+            if(i.posesion === 'Cámara') dynVal = i.areaProcedencia || '';
+            else if(i.posesion === 'Arrendamiento') dynVal = i.numContrato || 'LXVIDG AJ- 070/2024';
+            else if(i.posesion === 'Propiedad del Grupo') dynVal = i.grupoParlamentario || '';
+            document.getElementById('ad-dynamic-input').value = dynVal;
+        }
+
+        document.querySelectorAll('input[name="personal"]').forEach(r => r.checked = (r.value === (i.personal || 'No')));
+        toggleAdicFormFields('ad');
+        document.getElementById('serie-warning').classList.add('hidden');
+        captureAdditionalDraft();
+
+        showToast('Datos clonados.', 'info'); document.getElementById('adicional-form').scrollIntoView({behavior: 'smooth', block: 'start'});
+    };
+
+    let currentMatchAdicId = null;
+    window.openMatchModal = (id) => { const adic = state.additionalItems.find(x => x.id === id); if (!adic || adic.posesion !== 'Cámara' || adic.personal === 'Si') return; currentMatchAdicId = id; document.getElementById('match-ad-desc').textContent = adic.descripcion; document.getElementById('match-ad-info').innerHTML = `<i class="fa-solid fa-user mr-1"></i>${adic.usuario} <span class="mx-2">|</span> <i class="fa-solid fa-location-dot mr-1"></i>${adic.ubicacionEspecifica}`; const firstWord = adic.descripcion.split(' ')[0] || ''; document.getElementById('match-search-input').value = firstWord; renderMatchResults(firstWord); document.getElementById('match-modal').classList.add('show'); };
+    document.getElementById('match-search-input').addEventListener('input', (e) => { renderMatchResults(e.target.value); });
+    function renderMatchResults(term) {
+        const list = document.getElementById('match-results-list'); term = term.toLowerCase().trim(); const adic = state.additionalItems.find(x => x.id === currentMatchAdicId); const adicUser = adic ? state.resguardantes.find(u => u.name === adic.usuario) : null; const targetArea = adicUser ? adicUser.area : null; let pendings = state.inventory.filter(i => i.UBICADO !== 'SI');
+        if (term) { pendings = pendings.filter(i => String(i.DESCRIPCION||i.DESCRripcion||'').toLowerCase().includes(term) || String(i['CLAVE UNICA']||'').toLowerCase().includes(term) || String(i.MARCA||'').toLowerCase().includes(term) || String(i.SERIE||'').toLowerCase().includes(term) ); }
+        if (targetArea) { pendings.sort((a, b) => { const aIsSame = a.areaOriginal === targetArea; const bIsSame = b.areaOriginal === targetArea; if (aIsSame && !bIsSame) return -1; if (!aIsSame && bIsSame) return 1; return 0; }); } pendings = pendings.slice(0, 50);
+        if (pendings.length === 0) { list.innerHTML = '<p class="text-center text-gray-500 font-bold">No hay bienes pendientes.</p>'; return; }
+        list.innerHTML = pendings.map(i => { const isSameArea = targetArea && i.areaOriginal === targetArea; const areaTag = `<span class="inline-block px-2 py-0.5 mt-1 text-[10px] font-black rounded ${isSameArea ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">ÁREA: ${escapeHTML(i.areaOriginal || 'Desconocida')}</span>`; return `<div class="flex justify-between items-center bg-white p-3 rounded-xl shadow-sm border ${isSameArea ? 'border-l-4 border-l-green-400' : 'border-l-4 border-l-red-400'}"><div class="pr-3 w-full"><p class="font-bold text-gray-800">${escapeHTML(i.DESCRIPCION||i.DESCRripcion)}</p><p class="font-mono text-sm text-purple-700 font-bold mt-1">CLV: ${escapeHTML(i['CLAVE UNICA'])} ${areaTag}</p><p class="text-xs text-gray-500 font-medium">M: ${escapeHTML(i.MARCA||'-')} | S: ${escapeHTML(i.SERIE||'-')}</p></div><button data-action="edit" class="px-5 py-3 font-bold rounded-xl" onclick="confirmMatch(${inlineValue(i['CLAVE UNICA'])})">Vincular</button></div>`; }).join('');
+    }
+
+    window.confirmMatch = clave => {
+        const adic=state.additionalItems.find(i=>i.id===currentMatchAdicId);if(!adic)return;
+        showConfirm('Vincular con bien pendiente','Se agregarán descripción, marca, modelo y serie a las notas, conservando las anteriores. Se transferirán el resguardante y su ubicación; el bien quedará ubicado y pendiente de reetiquetar.',async()=>{
+            const overlay=document.getElementById('loading-overlay');overlay.classList.add('show');
+            try{
+                await photoDB.flush();
+                const next=InventoryAdditional.linkDraft(state,adic.id,clave);
+                const source=await photoDB.getItem('photos','additional-'+adic.id);
+                const destination=await photoDB.getItem('photos','inventory-'+clave);
+                if(source&&!destination)next.photos[clave]=true;
+                // Keep the source evidence as well, so Undo never loses a photograph.
+                await new Promise((resolve,reject)=>{
+                    const tx=photoDB.db.transaction(['appData','photos'],'readwrite');
+                    tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||new Error('No se pudo guardar la vinculación'));
+                    tx.objectStore('appData').put(InventoryData.clean(next),'mainState');
+                    if(source&&!destination)tx.objectStore('photos').put(source,'inventory-'+clave);
+                });
+                saveSnapshot();state=next;renderAdicionales();filterAndRenderInventory();renderDashboard();updateActiveUserLocationSelect();renderNotasTab();
+                document.getElementById('match-modal').classList.remove('show');showToast('Bien vinculado y marcado para reetiquetar.','success');
+            }catch(error){showToast(error.message,'error');}finally{overlay.classList.remove('show');}
+        });
+    };
+
+    window.showAdicDetail = id => {
+        const i = state.additionalItems.find(x=>x.id===id); if(!i) return; document.getElementById('ad-det-desc').textContent = i.descripcion || '-'; document.getElementById('ad-det-clave').textContent = i.claveAsignada || 'Sin Clave'; document.getElementById('ad-det-marca').textContent = i.marca || '-'; document.getElementById('ad-det-modelo').textContent = i.modelo || '-'; document.getElementById('ad-det-serie').textContent = i.serie || '-';
+
+        let dynHtml = '';
+        if(i.personal !== 'Si') {
+            if(i.posesion === 'Arrendamiento') dynHtml = `Contrato: ${i.numContrato || 'N/A'}`;
+            else if(i.posesion === 'Cámara') dynHtml = `Área Procedencia: ${i.areaProcedencia || 'N/A'}`;
+            else if(i.posesion === 'Propiedad del Grupo') dynHtml = `Grupo: ${i.grupoParlamentario || 'N/A'}`;
+        }
+
+        const dynContainer = document.getElementById('ad-det-dynamic-container');
+        if(dynHtml) { document.getElementById('ad-det-dynamic-val').textContent = dynHtml; dynContainer.classList.remove('hidden'); } else { dynContainer.classList.add('hidden'); }
+
+        document.getElementById('ad-det-posesion').textContent = i.posesion || '-';
+        document.getElementById('ad-det-personal').innerHTML = i.personal === 'Si' ? `<span class="text-yellow-600 font-bold">Sí ${i.tieneFormatoEntrada ? '(Con Formato)' : '(Sin Formato)'}</span>` : 'No'; document.getElementById('ad-det-usuario').textContent = i.usuario || '-'; document.getElementById('ad-det-ubicacion').textContent = i.ubicacionEspecifica || '-';
+        const adicUser = state.resguardantes.find(u => u.name === i.usuario); const locDetails = adicUser && adicUser.locationDetails && adicUser.locationDetails[i.ubicacionEspecifica] ? adicUser.locationDetails[i.ubicacionEspecifica] : {edificio:'N/A', piso:'N/A'}; document.getElementById('ad-det-infraestructura').innerHTML = `<i class="fa-solid fa-building mr-1"></i>${escapeHTML(locDetails.edificio)} | <i class="fa-solid fa-layer-group mr-1"></i>${escapeHTML(locDetails.piso)}`;
+        if (i.ubicadoPor) { document.getElementById('ad-det-auditor').innerHTML = `<i class="fa-solid fa-user-check mr-1 text-green-600"></i> ${escapeHTML(InventoryTeam.label(i.ubicadoPor,i.ubicadoPorNumero))}<br><span class="text-sm">Auxiliado por: ${escapeHTML(InventoryTeam.label(i.auxiliadoPor,i.auxiliadoPorNumero))}</span>`; document.getElementById('ad-det-auditor-container').classList.remove('hidden'); } else document.getElementById('ad-det-auditor-container').classList.add('hidden');
+        document.getElementById('ad-det-edit-btn').onclick = () => { document.getElementById('adicional-detail-view-modal').classList.remove('show'); editAdic(id); }; document.getElementById('ad-det-foto-btn').dataset.id = id; document.getElementById('ad-det-foto-btn').onclick = () => showPhoto('additional', id);
+        document.getElementById('ad-det-photo').classList.add('hidden'); document.getElementById('ad-delete-photo-btn').classList.add('hidden'); document.getElementById('ad-det-no-photo').classList.remove('hidden');
+        if(state.additionalPhotos[id]) { photoDB.getItem('photos', `additional-${id}`).then(b => { if(b) { document.getElementById('ad-det-photo').src = URL.createObjectURL(b); document.getElementById('ad-det-photo').classList.remove('hidden'); document.getElementById('ad-delete-photo-btn').classList.remove('hidden'); document.getElementById('ad-det-no-photo').classList.add('hidden'); } }); } document.getElementById('adicional-detail-view-modal').classList.add('show');
+    };
+
+    window.editAdic=id=>{
+        const item=state.additionalItems.find(i=>i.id===id);if(!item)return;
+        const $=field=>document.getElementById('edit-ad-'+field);
+        document.getElementById('edit-adicional-save-btn').dataset.id=id;autoValues['edit-ad']={};
+        $('clave').value=InventoryAdditional.generated(item)?'':item.claveAsignada||'';
+        $('clave').placeholder=InventoryAdditional.generated(item)?'Automática: '+item.claveAsignada:'Clave opcional';
+        $('desc').value=item.descripcion||'';$('marca').value=item.marca||'';$('modelo').value=item.modelo||'';$('serie').value=item.serie||'';
+        const type=item.personal==='Si'?'personal':item.posesion==='Arrendamiento'?'rental':item.posesion==='Propiedad del Grupo'?'group':InventoryAdditional.generated(item)?'institutional':'external';
+        toggleAdicFormFields('edit-ad',type);
+        $('dynamic-input').value=type==='rental'?item.numContrato||'':type==='group'?item.grupoParlamentario||'':item.areaProcedencia||'';
+        document.getElementById('edit-serie-warning').classList.add('hidden');
+        document.getElementById('edit-adicional-modal').classList.add('show');
+    };
+    document.getElementById('edit-adicional-save-btn').onclick=()=>{
+        const item=state.additionalItems.find(i=>i.id===document.getElementById('edit-adicional-save-btn').dataset.id);
+        if(!item)return;try{askEntryAndSave(readAdditional('edit-ad',item),true);}catch(error){showToast(error.message,'warning');}
+    };
+
+    window.delAdic=id=>{
+        showConfirm('Borrar adicional','Se eliminará el bien y se ajustarán las claves automáticas restantes.',async()=>{
+            try{
+                const next=structuredClone(state),item=next.additionalItems.find(i=>i.id===id);if(!item)return;
+                next.additionalItems=next.additionalItems.filter(i=>i.id!==id);
+                delete next.notes[item.claveAsignada];delete next.archivedNotes[item.claveAsignada];
+                InventoryAdditional.renumber(next);
+                await photoDB.setItem('appData','mainState',InventoryData.clean(next));
+                saveSnapshot();state=next;renderAdicionales();updateDatalists();updateActiveUserLocationSelect();filterAndRenderInventory();showToast('Adicional eliminado.','success');
+            }catch(error){showToast('No se pudo eliminar. Se conserva el bien.','error');}
+        });
+    };
+
+    window.showInvDetail = c => {
+        const i = state.inventory.find(x=>x['CLAVE UNICA']===c); if(!i) return; document.getElementById('detail-view-clave').textContent = i['CLAVE UNICA']; document.getElementById('detail-view-descripcion').textContent = i.DESCRripcion || i.DESCRIPCION; document.getElementById('detail-view-marca').textContent = i.MARCA||'-'; document.getElementById('detail-view-modelo').textContent = i.MODELO||'-'; document.getElementById('detail-view-serie').textContent = i.SERIE||'-'; document.getElementById('detail-view-usuario').textContent = i['NOMBRE DE USUARIO']||'Sin asignar'; document.getElementById('detail-view-ubicacion-especifica').textContent = i.ubicacionEspecifica||'-';
+        const nombreAreaOriginal = cleanAreaName(i.areaOriginal, NOMBRES_AREAS[i.areaOriginal] || ''); document.getElementById('detail-view-area').textContent = i.areaOriginal + (nombreAreaOriginal ? ` - ${nombreAreaOriginal}` : '');
+        const invUser = state.resguardantes.find(u => u.name === i['NOMBRE DE USUARIO']);
+        document.getElementById('detail-retag-flag').hidden = i.RE_ETIQUETADO !== 'SI';
+        const areaStatus = InventoryAssetStatus.area(i, invUser);
+        document.getElementById('detail-area-flag').hidden = !areaStatus.mismatch;
+        document.getElementById('detail-area-warning').textContent = areaStatus.message;
+        const locDetails = invUser && invUser.locationDetails && invUser.locationDetails[i.ubicacionEspecifica] ? invUser.locationDetails[i.ubicacionEspecifica] : {edificio:'N/A', piso:'N/A'}; document.getElementById('detail-view-infraestructura').innerHTML = `<i class="fa-solid fa-building mr-1"></i>${escapeHTML(locDetails.edificio)} | <i class="fa-solid fa-layer-group mr-1"></i>${escapeHTML(locDetails.piso)}`;
+        if (i.UBICADO === 'SI' && i.ubicadoPor) { document.getElementById('detail-view-auditor').innerHTML = `<i class="fa-solid fa-user-check mr-1 text-green-600"></i> ${escapeHTML(InventoryTeam.label(i.ubicadoPor,i.ubicadoPorNumero))}<br><span class="text-sm">Auxiliado por: ${escapeHTML(InventoryTeam.label(i.auxiliadoPor,i.auxiliadoPorNumero))}</span>`; document.getElementById('detail-view-auditor-container').classList.remove('hidden'); } else document.getElementById('detail-view-auditor-container').classList.add('hidden');
+        document.getElementById('detail-view-photo').classList.add('hidden'); document.getElementById('delete-active-photo-btn').classList.add('hidden'); document.getElementById('detail-view-no-photo').classList.remove('hidden');
+        if(state.photos[c]) { photoDB.getItem('photos', `inventory-${c}`).then(b => { if(b) { document.getElementById('detail-view-photo').src=URL.createObjectURL(b); document.getElementById('detail-view-photo').classList.remove('hidden'); document.getElementById('delete-active-photo-btn').classList.remove('hidden'); document.getElementById('detail-view-no-photo').classList.add('hidden'); } }); }
+
+        document.getElementById('detail-btn-ubicar').onclick = () => {
+            if(!state.activeResguardante) return showToast('Activa un usuario', 'error');
+            const proceed = () => { saveSnapshot(); i.UBICADO='SI'; i.RE_ETIQUETADO='NO'; i['NOMBRE DE USUARIO']=state.activeResguardante.name; i.ubicacionEspecifica = document.getElementById('active-user-location-select').value || state.activeResguardante.locationWithId; i.areaIncorrecta = i.areaOriginal !== state.activeResguardante.area; Object.assign(i, InventoryTeam.attribution(state)); addToSearchHistory(c); saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast('Asignado'); document.getElementById('item-detail-view-modal').classList.remove('show'); focusSearch(); };
+            if(i.UBICADO === 'SI') { showConfirm('Bien ya ubicado', 'Este bien ya está asignado a otro usuario. ¿Deseas reasignarlo?', proceed); } else proceed();
+        };
+        document.getElementById('detail-btn-reetiquetar').onclick = () => {
+            if(!state.activeResguardante) return showToast('Activa un usuario', 'error');
+            const proceed = () => { saveSnapshot(); i.UBICADO='SI'; i.RE_ETIQUETADO='SI'; i['NOMBRE DE USUARIO']=state.activeResguardante.name; i.ubicacionEspecifica = document.getElementById('active-user-location-select').value || state.activeResguardante.locationWithId; i.areaIncorrecta = i.areaOriginal !== state.activeResguardante.area; Object.assign(i, InventoryTeam.attribution(state)); addToSearchHistory(c); saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast('Reetiquetado'); document.getElementById('item-detail-view-modal').classList.remove('show'); focusSearch(); };
+            if(i.UBICADO === 'SI') { showConfirm('Bien ya ubicado', 'Este bien ya está asignado. ¿Deseas reetiquetarlo y reasignarlo?', proceed); } else proceed();
+        };
+        document.getElementById('detail-btn-desubicar').onclick = () => {
+            showConfirm('Quitar asignación', '¿Seguro que deseas quitar este bien del resguardo actual?', () => { saveSnapshot(); i.UBICADO='NO'; i.RE_ETIQUETADO='NO'; i['NOMBRE DE USUARIO']=''; i.ubicacionEspecifica=''; Object.assign(i, InventoryTeam.clear()); saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast('Asignación retirada'); showInvDetail(c); });
+        };
+        document.getElementById('detail-btn-nota').onclick = () => showNoteModal(c); document.getElementById('detail-btn-foto').onclick = () => showPhoto('inventory', c); document.getElementById('item-detail-view-modal').classList.add('show');
+    };
+
+    function renderNoteSuggestions() {
+        const input=document.getElementById('note-textarea'),box=document.getElementById('note-suggestions');
+        const query=input.value.trim().toLocaleLowerCase('es');
+        const suggestions=[...new Set([...Object.values(state.notes||{}),...Object.values(state.archivedNotes||{})])].filter(n=>typeof n==='string'&&n.trim()&&n!==input.value&&(!query||n.toLocaleLowerCase('es').includes(query))).slice(0,5);
+        box.replaceChildren();if(!suggestions.length)return;
+        const label=document.createElement('p');label.textContent='Sugerencias de notas guardadas';box.append(label);
+        for(const note of suggestions){const button=document.createElement('button');button.type='button';button.dataset.action='note';button.className='note-suggestion';button.textContent=note;button.onclick=()=>{input.value=note;box.replaceChildren();input.focus();};box.append(button);}
+    }
+    document.getElementById('note-textarea').oninput=renderNoteSuggestions;
+    window.showNoteModal = c => { document.getElementById('note-textarea').value = drafts.notes[c]??state.notes[c]??'';document.getElementById('note-draft-status').textContent=Object.hasOwn(drafts.notes,c)?'Borrador recuperado de este bien':''; document.getElementById('note-save-btn').dataset.c = c; renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show'); setTimeout(() => document.getElementById('note-textarea').focus(), 100); };
+    document.getElementById('note-save-btn').onclick = async e => {
+        const button=e.currentTarget,targetC=button.dataset.c,noteText=document.getElementById('note-textarea').value;
+        const keys=targetC==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[targetC];
+        const notes={...state.notes};for(const key of keys){if(noteText.trim())notes[key]=noteText;else delete notes[key];}
+        button.disabled=true;
+        try {
+            await photoDB.setItem('appData','mainState',InventoryData.clean({...state,notes}));
+            delete drafts.notes[targetC];await persistDrafts();saveSnapshot('Guardar nota');state.notes=notes;filterAndRenderInventory();renderNotasTab();document.getElementById('notes-modal').classList.remove('show');
+            showToast('Nota guardada en este equipo','success');focusSearch();
+        } catch {showToast('No se pudo guardar la nota. El texto sigue aquí; vuelve a intentarlo.','error');}
+        finally {button.disabled=false;}
+    };
+
+    let retagArchived=false, retagLimit=30, retagSaving=false;
+    function renderRetagList(){
+        const items=InventoryRetag.list(state,retagArchived,document.getElementById('retag-search').value);
+        document.getElementById('retag-pending').setAttribute('aria-pressed',String(!retagArchived));
+        document.getElementById('retag-done').setAttribute('aria-pressed',String(retagArchived));
+        document.getElementById('retag-count').textContent=items.length+' bienes '+(retagArchived?'etiquetados':'pendientes de reetiquetar');
+        const list=document.getElementById('retag-list');list.replaceChildren();
+        for(const item of items.slice(0,retagLimit)){
+            const row=document.createElement('article'),info=document.createElement('div'),title=document.createElement('strong'),detail=document.createElement('p'),actions=document.createElement('div'),open=document.createElement('button'),done=document.createElement('button');
+            const key=item['CLAVE UNICA'];title.textContent=key+' · '+(item.DESCRIPCION||item.DESCRripcion||'Sin descripción');
+            detail.textContent=(item['NOMBRE DE USUARIO']||'Sin asignar')+' · '+(item.ubicacionEspecifica||'Sin ubicación')+' · Serie: '+(item.SERIE||'Sin serie');
+            info.append(title,detail);
+            if(retagArchived){const stamp=document.createElement('p');stamp.textContent='Etiquetado: '+new Date(item.etiquetadoCompletado.at).toLocaleString('es-MX')+' · '+item.etiquetadoCompletado.por;info.append(stamp);}
+            actions.className='retag-actions';open.type=done.type='button';open.dataset.action='info';open.textContent='Ver bien';open.onclick=()=>showInvDetail(key);
+            done.dataset.action=retagArchived?'edit':'save';done.textContent=retagArchived?'Volver a pendientes':'Ya etiquetado · Archivar';done.disabled=retagSaving;
+            const reopen=retagArchived;
+            done.onclick=async()=>{
+                if(retagSaving)return;retagSaving=true;renderRetagList();document.getElementById('loading-overlay').classList.add('show');
+                try{
+                    const next=reopen?InventoryRetag.reopen(state,key):InventoryRetag.complete(state,key,state.currentUser?.name);
+                    await photoDB.setItem('appData','mainState',InventoryData.clean(next));
+                    saveSnapshot(reopen?'Reabrir reetiquetado':'Confirmar etiqueta colocada');state=next;
+                    filterAndRenderInventory();showToast(reopen?'Bien devuelto a pendientes':'Etiquetado y archivado','success');
+                }catch(error){showToast(error.message,'error');}
+                finally{retagSaving=false;document.getElementById('loading-overlay').classList.remove('show');renderRetagList();}
+            };
+            actions.append(open,done);row.append(info,actions);list.append(row);
+        }
+        if(!items.length){const empty=document.createElement('p');empty.textContent='No hay bienes que coincidan en esta lista.';list.append(empty);}
+        document.getElementById('retag-more').hidden=items.length<=retagLimit;
+    }
+    document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagLimit=30;renderRetagList();};
+    document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagLimit=30;renderRetagList();};
+    document.getElementById('retag-search').oninput=()=>{retagLimit=30;renderRetagList();};
+    document.getElementById('retag-more').onclick=()=>{retagLimit+=30;renderRetagList();};
+
+    window.viewArchivedNotes = false;
+    window.currentNotesPage = 1;
+    const notesPerPage = 6;
+    const selectedNotes=new Set();
+
+    document.getElementById('filter-notas-active').onclick = () => { window.viewArchivedNotes=false; selectedNotes.clear();window.currentNotesPage=1; updateNotasTabUI(); renderNotasTab(); };
+    document.getElementById('filter-notas-archived').onclick = () => { window.viewArchivedNotes=true;selectedNotes.clear(); window.currentNotesPage=1; updateNotasTabUI(); renderNotasTab(); };
+
+    function updateNotasTabUI() {
+        document.getElementById('filter-notas-active').setAttribute('aria-pressed', String(!window.viewArchivedNotes));
+        document.getElementById('filter-notas-archived').setAttribute('aria-pressed', String(!!window.viewArchivedNotes));
+    }
+
+    function filteredNoteKeys(){
+        const query=document.querySelector('.tab-btn.active')?.dataset.tab==='notas'?document.getElementById('global-search-input').value:'';
+        return InventorySearch.notes(state,window.viewArchivedNotes,query);
+    }
+    window.renderNotasTab = function() {
+        renderRetagList();
+        const container = document.getElementById('notas-list-container'); const pagContainer = document.getElementById('notas-pagination-container'); if(!state.archivedNotes) state.archivedNotes = {};
+        const targetObj = window.viewArchivedNotes ? state.archivedNotes : state.notes; const keys = filteredNoteKeys();
+        for(const key of selectedNotes)if(!keys.includes(key))selectedNotes.delete(key);
+        document.getElementById('notes-selection-count').textContent=selectedNotes.size+' de '+keys.length+' coincidencias seleccionadas (incluye todas las páginas filtradas).';
+        document.getElementById('notes-bulk-move').textContent=window.viewArchivedNotes?'Desarchivar seleccionadas':'Archivar seleccionadas';
+        document.getElementById('notes-bulk-move').disabled=!selectedNotes.size;
+
+        if(keys.length === 0) { container.innerHTML = `<p class="col-span-2 text-center text-gray-500 font-bold py-10">No hay notas ${window.viewArchivedNotes ? 'archivadas' : 'activas'} que coincidan con la búsqueda.</p>`; pagContainer.innerHTML = ''; return; }
+
+        const totalPages = Math.ceil(keys.length / notesPerPage) || 1;
+        if (window.currentNotesPage > totalPages) window.currentNotesPage = totalPages;
+        const paginatedKeys = keys.slice((window.currentNotesPage - 1) * notesPerPage, window.currentNotesPage * notesPerPage);
+
+        container.innerHTML = paginatedKeys.map(clave => {
+            const item = state.inventory.find(i => i['CLAVE UNICA'] === clave); const desc = item ? (item.DESCRIPCION || item.DESCRripcion) : 'Bien No Encontrado'; const texto = targetObj[clave];
+            return `<div class="bg-white p-4 rounded-xl border shadow-sm flex flex-col h-48"><div class="flex justify-between items-start mb-2 border-b pb-2 shrink-0"><div class="min-w-0 pr-2"><label><input type="checkbox" class="note-select" data-key="${escapeHTML(clave)}" aria-label="Seleccionar nota ${escapeHTML(clave)}" ${selectedNotes.has(clave)?'checked':''}> <span class="font-black text-indigo-900">${escapeHTML(clave)}</span></label><p class="text-xs font-bold text-gray-500 truncate" title="${escapeHTML(desc)}">${escapeHTML(desc)}</p></div><div class="flex gap-2 shrink-0"><button data-action="note" class="w-8 h-8 rounded-md" onclick="showNoteModal(${inlineValue(clave)})"><i class="fa-solid fa-pen"></i></button>${window.viewArchivedNotes ? `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, false)"><i class="fa-solid fa-box-open"></i></button>` : `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, true)"><i class="fa-solid fa-box-archive"></i></button>`}</div></div><div class="text-sm text-gray-700 font-medium overflow-y-auto whitespace-pre-wrap flex-grow">${escapeHTML(texto)}</div></div>`;
+        }).join('');
+
+        pagContainer.innerHTML = `<button data-action="neutral" class="px-5 py-2 font-bold rounded-lg ${window.currentNotesPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'}" onclick="if(window.currentNotesPage > 1) { window.currentNotesPage--; renderNotasTab(); }">Anterior</button><span class="font-bold text-gray-600">Página ${window.currentNotesPage} de ${totalPages}</span><button data-action="neutral" class="px-5 py-2 font-bold rounded-lg ${window.currentNotesPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'}" onclick="if(window.currentNotesPage < ${totalPages}) { window.currentNotesPage++; renderNotasTab(); }">Siguiente</button>`;
+    }
+
+    document.getElementById('notas-list-container').addEventListener('change',e=>{if(!e.target.matches('.note-select'))return;if(e.target.checked)selectedNotes.add(e.target.dataset.key);else selectedNotes.delete(e.target.dataset.key);renderNotasTab();});
+    document.getElementById('notes-select-all').onclick=()=>{filteredNoteKeys().forEach(k=>selectedNotes.add(k));renderNotasTab();};
+    document.getElementById('notes-clear-selection').onclick=()=>{selectedNotes.clear();renderNotasTab();};
+    async function moveSelectedNotes(keys,toArchive){
+        const button=document.getElementById('notes-bulk-move');button.disabled=true;document.getElementById('loading-overlay').classList.add('show');
+        try{const result=InventoryOperations.moveNotes(state,keys,toArchive);if(!result.count)return;await photoDB.setItem('appData','mainState',InventoryData.clean(result.next));saveSnapshot(toArchive?'Archivar notas':'Desarchivar notas');state=result.next;selectedNotes.clear();renderNotasTab();filterAndRenderInventory();showToast(result.count+' notas '+(toArchive?'archivadas':'desarchivadas'),'success');}
+        catch{showToast('No se pudo guardar. Las notas y la selección se conservan.','error');}
+        finally{document.getElementById('loading-overlay').classList.remove('show');button.disabled=!selectedNotes.size;}
+    }
+    document.getElementById('notes-bulk-move').onclick=()=>{const keys=[...selectedNotes],archive=!window.viewArchivedNotes;if(!keys.length)return;showConfirm(archive?'Archivar notas':'Desarchivar notas',`Se moverán ${keys.length} notas seleccionadas, incluidas las de otras páginas. Si ya existe otra nota del mismo bien en destino, se conservarán ambos textos.`,()=>moveSelectedNotes(keys,archive));};
+    window.toggleArchiveNote=(clave,toArchive)=>moveSelectedNotes([clave],toArchive);
+
+
+    document.getElementById('print-notas-btn').onclick = async () => {
+        let html = `<div class="print-header"><img src="logo.png"><div class="print-header-text"><div class="print-header-line">DIRECCIÓN GENERAL DE RECURSOS MATERIALES Y SERVICIOS</div><div class="print-header-line">DIRECCIÓN DE ALMACÉN E INVENTARIOS</div><div class="print-header-line print-area-line">REPORTE DE NOTAS ${window.viewArchivedNotes ? 'ARCHIVADAS' : 'ACTIVAS'}</div></div><div class="print-date-abs">Fecha: ${new Date().toLocaleDateString()}</div></div><table class="print-table"><colgroup><col style="width: 16%;"><col style="width: 24%;"><col style="width: 60%;"></colgroup><thead><tr><th>CLAVE</th><th>DESCRIPCIÓN</th><th>NOTA</th></tr></thead><tbody>`;
+        const targetObj = window.viewArchivedNotes ? state.archivedNotes : state.notes;
+        filteredNoteKeys().forEach(c => { html += `<tr><td style="white-space:nowrap">${escapeHTML(c)}</td><td>${escapeHTML((state.inventory.find(i=>i['CLAVE UNICA']===c)||{}).DESCRIPCION||'')}</td><td>${escapeHTML(targetObj[c])}</td></tr>`; });
+        document.getElementById('print-area').innerHTML = html + `</tbody></table>`; try { await InventoryOutput.print(); } catch(error) { showToast(error.message, 'error'); } document.getElementById('print-area').innerHTML = '';
+    };
+
+    window.showPhoto = (type, id) => {
+        document.getElementById('photo-input').dataset.t = type; document.getElementById('photo-input').dataset.i = id; document.getElementById('photo-view-container').classList.add('hidden'); document.getElementById('photo-upload-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.remove('flex');
+        let titleText = 'Fotografía';
+        if(type === 'inventory') { const item = state.inventory.find(x => x['CLAVE UNICA'] === id); if(item) titleText = `${id} - ${(item.DESCRripcion || item.DESCRIPCION).substring(0, 40)}...`; }
+        else if(type === 'additional') { const item = state.additionalItems.find(x => x.id === id); if(item) titleText = `Adicional: ${item.descripcion.substring(0, 40)}...`; }
+        else if(type === 'user') { const u = state.resguardantes.find(x => x.id === id); if(u) titleText = `Foto: ${u.name}`; }
+        else if(type === 'location') { const [uid, loc] = id.split('|'); const u = state.resguardantes.find(x => x.id === uid); if(u) titleText = `Ubicación: ${loc}`; }
+
+        document.getElementById('photo-modal-title').textContent = titleText; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-circle-camera mr-2"></i> Capturar Foto';
+        let exists = type==='inventory' ? state.photos[id] : (type==='user' ? (state.userPhotos && state.userPhotos[id]) : (type==='location' ? state.locationPhotos && state.locationPhotos[id] : state.additionalPhotos[id]));
+        if(exists) { photoDB.getItem('photos', `${type}-${id}`).then(b => { if(b) { document.getElementById('item-photo-img').src=URL.createObjectURL(b); document.getElementById('photo-view-container').classList.remove('hidden'); } }); } else { document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); startCamera(); } document.getElementById('photo-modal').classList.add('show');
+    };
+
+    document.getElementById('capture-photo-btn').onclick = function() {
+        const btn = this; if(btn.disabled) return; const video = document.getElementById('camera-stream'); if (!video.videoWidth) return showToast('Enfocando...', 'warning');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando...';
+        const canvas = document.getElementById('photo-canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight; canvas.getContext('2d').drawImage(video, 0, 0);
+        canvas.toBlob(blob => {
+            const t = document.getElementById('photo-input').dataset.t; const id = document.getElementById('photo-input').dataset.i;
+            if (t === 'inventory-bulk') { const ids = document.getElementById('photo-input').dataset.bulkIds.split(','); ids.forEach(bulkId => { state.photos[bulkId] = true; }); saveState(); stopCamera(); document.getElementById('photo-modal').classList.remove('show'); document.getElementById('select-all-checkbox').checked = false; filterAndRenderInventory(); Promise.all(ids.map(bulkId => photoDB.setItem('photos', `inventory-${bulkId}`, blob))).then(() => showToast('Foto guardada', 'success')).finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-camera"></i>'; }); return; }
+            if(t==='inventory') state.photos[id]=true;
+            else if (t==='user') { if(!state.userPhotos) state.userPhotos = {}; state.userPhotos[id]=true; }
+            else if (t==='location') { if(!state.locationPhotos) state.locationPhotos = {}; state.locationPhotos[id]=true; }
+            else state.additionalPhotos[id]=true;
+
+            saveState(); const imgUrl = URL.createObjectURL(blob); stopCamera(); document.getElementById('photo-modal').classList.remove('show');
+            if (t === 'inventory' && document.getElementById('item-detail-view-modal').classList.contains('show')) { document.getElementById('detail-view-photo').src = imgUrl; document.getElementById('detail-view-photo').classList.remove('hidden'); document.getElementById('delete-active-photo-btn').classList.remove('hidden'); document.getElementById('detail-view-no-photo').classList.add('hidden'); } else if (t === 'additional' && document.getElementById('adicional-detail-view-modal').classList.contains('show')) { document.getElementById('ad-det-photo').src = imgUrl; document.getElementById('ad-det-photo').classList.remove('hidden'); document.getElementById('ad-delete-photo-btn').classList.remove('hidden'); document.getElementById('ad-det-no-photo').classList.add('hidden'); }
+
+            if (t === 'location' && document.getElementById('user-detail-view-modal').classList.contains('show')) { const [uid] = id.split('|'); showUserDetail(uid); }
+
+            filterAndRenderInventory(); renderAdicionales(); renderUsers(); photoDB.setItem('photos', `${escapeHTML(t)}-${id}`, blob).then(() => showToast('Foto guardada', 'success')).finally(() => { btn.disabled = false; });
+        }, 'image/jpeg', 0.8);
+    };
+
+    document.getElementById('delete-photo-btn').onclick = () => { const t = document.getElementById('photo-input').dataset.t; const id = document.getElementById('photo-input').dataset.i; photoDB.db.transaction(['photos'], 'readwrite').objectStore('photos').delete(`${escapeHTML(t)}-${id}`); if(t==='inventory') delete state.photos[id]; else if (t==='user') delete state.userPhotos[id]; else if (t==='location') delete state.locationPhotos[id]; else delete state.additionalPhotos[id]; saveState(); showToast('Foto eliminada'); document.getElementById('photo-modal').classList.remove('show'); if (t === 'location' && document.getElementById('user-detail-view-modal').classList.contains('show')) { const [uid] = id.split('|'); showUserDetail(uid); } filterAndRenderInventory(); renderAdicionales(); renderUsers(); };
+    function deletePhotoFromModal(type, id) { showConfirm('Eliminar Foto', '¿Eliminar y tomar nueva?', () => { photoDB.db.transaction(['photos'], 'readwrite').objectStore('photos').delete(`${type}-${id}`); if(type === 'inventory') { delete state.photos[id]; document.getElementById('detail-view-photo').classList.add('hidden'); document.getElementById('delete-active-photo-btn').classList.add('hidden'); document.getElementById('detail-view-no-photo').classList.remove('hidden'); } else if (type === 'additional') { delete state.additionalPhotos[id]; document.getElementById('ad-det-photo').classList.add('hidden'); document.getElementById('ad-delete-photo-btn').classList.add('hidden'); document.getElementById('ad-det-no-photo').classList.remove('hidden'); } saveState(); filterAndRenderInventory(); renderAdicionales(); setTimeout(() => showPhoto(type, id), 200); }); }
+    document.getElementById('delete-active-photo-btn').onclick = () => { deletePhotoFromModal('inventory', document.getElementById('detail-view-clave').textContent); }; document.getElementById('ad-delete-photo-btn').onclick = () => { deletePhotoFromModal('additional', document.getElementById('ad-det-foto-btn').dataset.id); };
+
+    let scanSession = 0, scannerStarting = false;
+    async function closeCodeScanner() {
+        ++scanSession; releaseScanFocus();
+        document.getElementById('qr-modal').classList.remove('show');
+        if (html5QrCode?.isScanning) await html5QrCode.stop().catch(() => {});
+    }
+    async function startCodeScanner(onRead) {
+        if (scannerStarting || html5QrCode?.isScanning) return;
+        const session = ++scanSession;
+        scannerStarting = true;
+        document.getElementById('qr-modal').classList.add('show');
+        if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+        let detected = false;
+        try {
+            await InventoryCamera.use(camera=>html5QrCode.start(camera, { fps:10 }, async text => {
+                if (detected || session !== scanSession) return;
+                detected = true;
+                await closeCodeScanner();
+                onRead(text.trim());
+                showToast('Código detectado', 'success');
+            }, () => {}));
+            if (session !== scanSession && html5QrCode.isScanning) await html5QrCode.stop();
+            else if(session===scanSession) releaseScanFocus=InventoryCamera.attachFocus(document.querySelector("#qr-reader video"),document.getElementById("qr-focus-status"));
+        } catch {
+            if (session === scanSession) { await closeCodeScanner(); showToast('No se pudo abrir la cámara. Revisa el permiso o escribe la serie.', 'error'); }
+        } finally { scannerStarting = false; }
+    }
+    document.getElementById('nav-qr-scan-btn').onclick = () => startCodeScanner(applySearch);
+    document.getElementById('qr-close-btn').onclick = closeCodeScanner;
+    for (const prefix of ['ad','edit-ad']) document.getElementById(prefix+'-scan-serie').onclick = () => startCodeScanner(text => {
+        const input=document.getElementById(prefix+'-serie');input.value=text;
+        input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));input.focus();
+    });
+
+
+    // --- PESTAÑA REPORTES OPTIMIZADA CON ÁLBUM ---
+    document.getElementById('rep-type-select').onchange = (e) => {
+        const toggleAdic = document.getElementById('rep-adic-toggle-container');
+        const locContainer = document.getElementById('rep-location-container');
+        const firmasContainer = document.getElementById('rep-firmas-container');
+        const generateBtn = document.getElementById('rep-generate-btn');
+
+        if (e.target.value === 'resguardo') toggleAdic.classList.remove('hidden'); else toggleAdic.classList.add('hidden');
+        if (e.target.value === 'album') {
+            locContainer.classList.remove('hidden');
+            firmasContainer.classList.add('hidden');
+            generateBtn.innerHTML = '<i class="fa-solid fa-eye mr-2"></i>Generar Vista Previa';
+        } else {
+            locContainer.classList.add('hidden');
+            firmasContainer.classList.remove('hidden');
+            generateBtn.textContent='Generar vista previa';
+        }
+        updateReportUsers();
+    };
+
+    function renderReportSearch() {
+        const query=document.getElementById('global-search-input').value.trim();
+        const panel=document.getElementById('report-search-panel'),list=document.getElementById('report-search-results');
+        list.replaceChildren();panel.hidden=!query;if(!query)return;
+        const types=[...document.getElementById('rep-type-select').options].map(o=>({value:o.value,label:o.textContent}));
+        const results=InventorySearch.reports(state,types,query,NOMBRES_AREAS);
+        document.getElementById('report-search-status').textContent=results.length ? results.length+' opciones. Elige una para abrir su vista previa.'+(results.length>40?' Se muestran las primeras 40; escribe más para precisar.':'') : 'No hay reportes que coincidan. Prueba con un tipo, área o resguardante.';
+        for(const result of results.slice(0,40)){
+            const button=document.createElement('button');button.type='button';button.dataset.action='info';button.textContent=result.label;
+            button.onclick=()=>{
+                document.getElementById('rep-type-select').value=result.type;
+                document.getElementById('rep-type-select').dispatchEvent(new Event('change'));
+                document.getElementById('rep-area-select').value=result.area;updateReportUsers();
+                document.getElementById('rep-user-select').value=result.user;
+                document.getElementById('rep-user-select').dispatchEvent(new Event('change'));
+                document.getElementById('rep-generate-btn').click();
+            };
+            list.append(button);
+        }
+    }
+    function populateReportFilters() {
+        const areas = [...new Set([...state.inventory.map(i=>i.areaOriginal), ...state.resguardantes.map(u=>u.area)])].sort();
+        document.getElementById('rep-area-select').innerHTML = '<option value="all">TODAS LAS ÁREAS (Múltiples Páginas)</option>' + areas.map(a => `<option value="${escapeHTML(a)}">Área ${escapeHTML(a)} - ${escapeHTML(cleanAreaName(a, NOMBRES_AREAS[a]||''))}</option>`).join('');
+        updateReportUsers();
+    }
+
+    function updateReportUsers() {
+        const selArea = document.getElementById('rep-area-select').value;
+        let users = state.resguardantes;
+        if(selArea !== 'all') users = users.filter(u => u.area === selArea);
+        const areaOption = document.getElementById('rep-type-select').value === 'adicionales' && selArea !== 'all' ? '<option value="__area__">TODA EL ÁREA — UN SOLO REPORTE</option>' : '';
+        document.getElementById('rep-user-select').innerHTML = '<option value="all">TODOS LOS USUARIOS ASIGNADOS (UN REPORTE POR USUARIO)</option>' + areaOption + users.map(u => `<option value="${escapeHTML(u.name)}">${escapeHTML(u.name)}</option>`).join('');
+
+        const r = state.responsablesList.find(resp => resp.area === selArea) || {};
+        document.getElementById('rep-area-name').value = selArea !== 'all' ? `ÁREA ${selArea} ${cleanAreaName(selArea, NOMBRES_AREAS[selArea]||'')}` : '';
+        document.getElementById('rep-resp-name').value = r.name || '';
+        document.getElementById('rep-resp-title').value = r.title || '';
+
+        updateReportLocations();
+    }
+
+    function updateReportLocations() {
+        document.getElementById('rep-firma-2').disabled = false;
+        document.getElementById('rep-user-select').disabled=document.getElementById('rep-type-select').value==='pendientes';
+        document.getElementById('rep-firma-2').parentElement.title='';
+        const selUser = document.getElementById('rep-user-select').value;
+        const selArea = document.getElementById('rep-area-select').value;
+        let locs = new Set();
+        let users = state.resguardantes;
+        if(selArea !== 'all') users = users.filter(u => u.area === selArea);
+        if(selUser !== 'all' && selUser !== '__area__') users = users.filter(u => u.name === selUser);
+        users.forEach(u => (u.locations||[]).forEach(l => locs.add(l)));
+        document.getElementById('rep-location-select').innerHTML = '<option value="all">TODAS LAS UBICACIONES</option>' + [...locs].sort().map(l => `<option value="${escapeHTML(l)}">${escapeHTML(l)}</option>`).join('');
+    }
+
+    document.getElementById('rep-area-select').onchange = updateReportUsers;
+    document.getElementById('rep-user-select').onchange = () => {
+        const u = state.resguardantes.find(x => x.name === document.getElementById('rep-user-select').value);
+        if(u) {
+            const r = state.responsablesList.find(resp => resp.area === u.area) || {};
+            document.getElementById('rep-area-name').value = `ÁREA ${u.area} ${cleanAreaName(u.area, NOMBRES_AREAS[u.area]||'')}`; document.getElementById('rep-resp-name').value = r.name || ''; document.getElementById('rep-resp-title').value = r.title || '';
         }
         updateReportLocations();
     };
@@ -742,4 +1481,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderBackupStatus();updateHeaderArea(); populateFilters(); renderDashboard(); const lastTab=localStorage.getItem('inventario-last-tab');changeTab(['users','inventory','adicionales','notas','reportes','settings'].includes(lastTab)?lastTab:'users'); updateDatalists(); populateReportFilters(); toggleAdicFormFields('ad');
     }
 });
-
