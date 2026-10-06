@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('recovery-create').onclick=async()=>{const overlay=document.getElementById('loading-overlay');overlay.classList.add('show');try{await InventoryRecovery.create(photoDB,state,'Punto manual');await renderRecoveryPoints();showToast('Punto de recuperación guardado','success');}catch(e){showToast('No se pudo crear el punto. '+escapeHTML(e.message),'error');}finally{overlay.classList.remove('show');}};
 
     function matchMagicProfile(val) { return state.perfilesMagicos ? state.perfilesMagicos.find(p => { try { return new RegExp(p.regexStr, 'i').test(val); } catch(e) { return false; } }) : null; }
-    function focusSearch() { const input = document.getElementById('global-search-input'); if(input && !input.disabled) { input.focus(); input.select(); setTimeout(() => { input.focus(); input.select(); }, 150); } }
+    function focusSearch() { const input = document.getElementById('global-search-input'); if(input && !input.disabled) { input.focus(); input.select(); } }
     window.copyRespText = (text) => { navigator.clipboard.writeText(text).then(() => showToast('Nombre copiado', 'success')).catch(() => showToast('Error al copiar', 'error')); };
     function escapeHTML(str) { return String(str||'').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
     function inlineValue(value){return escapeHTML(JSON.stringify(String(value??'')).replace(/'/g,'\\u0027'));}
