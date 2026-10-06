@@ -854,13 +854,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('detail-btn-nota').onclick = () => showNoteModal(c); document.getElementById('detail-btn-foto').onclick = () => showPhoto('inventory', c); document.getElementById('item-detail-view-modal').classList.add('show');
     };
 
+    let noteSuggestionSaving=false;
     function renderNoteSuggestions() {
         const input=document.getElementById('note-textarea'),box=document.getElementById('note-suggestions');
-        const query=input.value.trim().toLocaleLowerCase('es');
-        const suggestions=[...new Set([...Object.values(state.notes||{}),...Object.values(state.archivedNotes||{})])].filter(n=>typeof n==='string'&&n.trim()&&n!==input.value&&(!query||n.toLocaleLowerCase('es').includes(query))).slice(0,5);
+        const suggestions=InventoryNoteSuggestions.list(state,input.value);
         box.replaceChildren();if(!suggestions.length)return;
         const label=document.createElement('p');label.textContent='Sugerencias de notas guardadas';box.append(label);
-        for(const note of suggestions){const button=document.createElement('button');button.type='button';button.dataset.action='note';button.className='note-suggestion';button.textContent=note;button.onclick=()=>{input.value=note;box.replaceChildren();input.focus();};box.append(button);}
+        for(const note of suggestions){
+            const row=document.createElement('div'),button=document.createElement('button'),remove=document.createElement('button');
+            row.className='note-suggestion-row';button.type=remove.type='button';button.dataset.action='note';button.className='note-suggestion';button.textContent=note;
+            button.onclick=()=>{input.value=note;input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();};
+            remove.textContent='×';remove.className='note-suggestion-remove';remove.dataset.action='danger';remove.disabled=noteSuggestionSaving;
+            remove.title='Eliminar sugerencia';remove.setAttribute('aria-label','Eliminar sugerencia de nota: '+note);
+            remove.onclick=async()=>{
+                if(noteSuggestionSaving||document.getElementById('note-save-btn').disabled)return;
+                noteSuggestionSaving=true;document.getElementById('note-save-btn').disabled=true;document.getElementById('note-cancel-btn').disabled=true;renderNoteSuggestions();
+                try{
+                    const values=InventoryNoteSuggestions.dismiss(state,note);
+                    await photoDB.setItem('appData','mainState',InventoryData.clean({...state,dismissedNoteSuggestions:values}));
+                    state.dismissedNoteSuggestions=values;
+                    showToast('Sugerencia eliminada. Las notas guardadas se conservan.','success');
+                }catch{showToast('No se pudo eliminar la sugerencia. Vuelve a intentarlo.','error');}
+                finally{noteSuggestionSaving=false;document.getElementById('note-save-btn').disabled=false;document.getElementById('note-cancel-btn').disabled=false;renderNoteSuggestions();input.focus({preventScroll:true});}
+            };
+            row.append(button,remove);box.append(row);
+        }
     }
     document.getElementById('note-textarea').oninput=renderNoteSuggestions;
     window.showNoteModal = c => { document.getElementById('note-textarea').value = drafts.notes[c]??state.notes[c]??'';document.getElementById('note-draft-status').textContent=Object.hasOwn(drafts.notes,c)?'Borrador recuperado de este bien':''; document.getElementById('note-save-btn').dataset.c = c; renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show'); setTimeout(() => document.getElementById('note-textarea').focus(), 100); };

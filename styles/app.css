@@ -121,7 +121,10 @@
 .review-actions button { padding:12px; border-radius:10px; background:#e5e7eb; font-weight:bold; }
 .review-actions [data-confirm] { background:#03564B; color:white; }
 #note-suggestions { max-height:160px; overflow:auto; font-size:14px; }
-.note-suggestion { display:block; width:100%; text-align:left; background:#EDF5F1; border-radius:8px; margin:5px 0; padding:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.note-suggestion-row { display:flex; align-items:stretch; gap:6px; margin:5px 0; }
+.note-suggestion { display:block; flex:1; min-width:0; text-align:left; background:#EDF5F1; border-radius:8px; padding:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.note-suggestion-remove { flex:0 0 44px; align-self:center; width:44px; min-height:44px; border-radius:8px; font-size:24px; line-height:1; }
+.note-suggestion-remove:disabled { opacity:.5; cursor:wait; }
 #notes-modal>div { max-height:92vh; overflow:auto; }
 
 .area-review { padding:20px; margin-bottom:24px; background:white; border:2px solid #CEDFD7; border-radius:18px; }
