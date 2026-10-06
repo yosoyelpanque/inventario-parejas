@@ -24,12 +24,27 @@
     <link rel="stylesheet" href="styles/rfid.css">
     <link rel="stylesheet" href="styles/theme.css">
     <link rel="stylesheet" href="styles/actions.css">
+    <link rel="stylesheet" href="styles/description-suggestions.css">
     <link rel="stylesheet" href="styles/mobile.css">
 </head>
 <body class="text-gray-800 text-lg">
     <section id="workspace-gate" role="status" aria-live="polite">
         <div><i class="fa-solid fa-laptop" aria-hidden="true"></i><h2>Control de inventarios</h2><p id="workspace-message">Preparando el espacio de trabajo…</p></div>
     </section>
+    <dialog id="photo-import-dialog" aria-labelledby="photo-import-title" class="restore-dialog">
+        <header><h2 id="photo-import-title">Importar solo fotografías</h2><p>Agrega fotos de otro equipo a los bienes de esta sesión.</p></header>
+        <div class="restore-body">
+            <p id="photo-import-file-name" class="restore-filename"></p>
+            <p>Se relacionan por clave única o por una coincidencia segura del bien. Tu inventario, notas, ubicaciones y equipo de auditores se conservan.</p>
+            <div id="photo-import-summary" class="photo-import-summary" role="status"></div>
+            <label class="photo-import-choice"><input id="photo-import-replace" type="checkbox"> Reemplazar también las fotos que ya existen</label>
+            <p id="photo-import-protection">Por defecto se conservan tus fotos actuales. Se guardará un punto de recuperación antes de importar.</p>
+            <ul id="photo-import-list" class="photo-import-list"></ul>
+            <button id="photo-import-more" type="button" data-action="info" hidden>Mostrar más</button>
+            <p id="photo-import-error" role="alert"></p>
+        </div>
+        <footer><button id="photo-import-cancel" type="button" data-action="neutral" autofocus>Cancelar</button><button id="photo-import-confirm" type="button" data-action="photo">Importar fotografías</button></footer>
+    </dialog>
     <dialog id="restore-backup-dialog" aria-labelledby="restore-title" class="restore-dialog">
         <header><h2 id="restore-title">Restaurar respaldo</h2><p>Revisa el contenido antes de reemplazar el inventario.</p></header>
         <div class="restore-body">
@@ -344,6 +359,18 @@
                 </div>
 
                 <div id="settings-tab" class="tab-content">
+                    <details id="description-suggestions-panel" class="area-review">
+                        <summary>Sugerencias de descripciones</summary>
+                        <p>Administra las descripciones que aparecen al escribir. Eliminar una sugerencia conserva los datos de los bienes y los perfiles de autollenado.</p>
+                        <div class="description-suggestions-controls">
+                            <label for="description-suggestions-search">Buscar descripción<input id="description-suggestions-search" type="search" placeholder="Escribe una descripción" autocomplete="off"></label>
+                            <label for="description-suggestions-filter">Mostrar<select id="description-suggestions-filter"><option value="available">Disponibles</option><option value="removed">Eliminadas</option></select></label>
+                        </div>
+                        <p id="description-suggestions-status" role="status"></p>
+                        <ul id="description-suggestions-list"></ul>
+                        <button id="description-suggestions-more" type="button" data-action="info" hidden>Mostrar más</button>
+                        <p id="description-suggestions-message" role="status" aria-live="polite"></p>
+                    </details>
                     <details id="area-progress-panel" class="area-review" aria-labelledby="area-progress-title">
                         <summary id="area-progress-title">Avance por área</summary>
                         <div class="area-progress-heading"><p>Porcentaje de bienes del inventario que ya fueron ubicados.</p><strong id="area-progress-summary" aria-live="polite"></strong></div>
@@ -367,6 +394,8 @@
                             <input type="file" id="import-file-input" class="hidden" accept=".zip">
                             <button data-action="edit" id="merge-session-btn" class="md:col-span-2 py-5 rounded-xl font-bold text-xl shadow-md transition-transform hover:-translate-y-1"><i class="fa-solid fa-code-merge block text-3xl mb-2"></i>3. Fusionar sesión ZIP</button>
                             <input type="file" id="merge-file-input" class="hidden" accept=".zip">
+                            <button data-action="photo" id="import-photos-btn" type="button" class="md:col-span-2 py-5 rounded-xl font-bold text-xl shadow-md"><i class="fa-solid fa-images block text-3xl mb-2" aria-hidden="true"></i>Importar solo fotos de un ZIP</button>
+                            <input type="file" id="import-photos-input" class="hidden" accept=".zip">
                             <button data-action="info" id="export-excel-btn" class="md:col-span-2 py-5 bg-emerald-600 rounded-xl font-bold text-xl shadow-md hover:bg-emerald-700 transition-transform hover:-translate-y-1 border-4 border-emerald-300"><i class="fa-solid fa-file-excel block text-3xl mb-2"></i>4. Exportar todo a Excel (XLSX)</button>
                             <button data-action="danger" id="clear-session-btn" class="md:col-span-2 py-5 rounded-xl font-bold text-xl shadow-md transition-transform hover:-translate-y-1 mt-6 border-4"><i class="fa-solid fa-trash-can block text-3xl mb-2"></i>5. Borrar toda la sesión</button>
                         </div>
@@ -379,7 +408,7 @@
         </div>
     </div>
 
-    <div id="toast-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[1001] space-y-2 flex flex-col items-center pointer-events-none"></div>
+    <div id="toast-container" class="fixed left-1/2 transform -translate-x-1/2 space-y-2 flex flex-col items-center pointer-events-none" role="status" aria-live="polite" aria-atomic="false"></div>
 <script src="src/data.js"></script>
 <script src="src/storage.js"></script>
 <script src="src/rfid-core.js"></script>
@@ -405,6 +434,9 @@
 <script src="src/retag.js"></script>
 <script src="src/asset-status.js"></script>
 <script src="src/progress.js"></script>
+<script src="src/description-suggestions.js"></script>
+<script src="src/photo-watermark.js"></script>
+<script src="src/photo-import.js"></script>
 <script src="src/app.js"></script>
 <script src="src/rfid-ui.js"></script>
 </body>

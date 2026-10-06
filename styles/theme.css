@@ -75,7 +75,8 @@
  .team-card button{border-radius:8px;background:var(--brand);font-size:14px}.team-card .team-confirmation button{padding:10px 16px}
  .team-logo{height:58px;margin-bottom:16px}.team-eyebrow{color:var(--copper-dark);font-size:10px;letter-spacing:.12em}.team-card .team-confirmation p{color:var(--brand)}
  #device-status{background:#E9EEEA;color:#435E53;font-size:11px;padding:5px;line-height:1.4}#backup-status{font-size:11px;padding:5px;color:#635444;background:#FFFBE9}#backup-status button{margin-left:6px;text-decoration:underline}
- #toast-container>div{font-size:14px;padding:12px 18px;box-shadow:0 8px 24px #033e3c22;max-width:min(520px,90vw)}
+ #toast-container{top:max(8px,env(safe-area-inset-top));bottom:auto;z-index:2147483647;max-width:calc(100vw - 24px);width:max-content;pointer-events:none}
+ #toast-container>div{font-size:14px;padding:12px 18px;box-shadow:0 8px 24px #033e3c22;max-width:min(520px,90vw);pointer-events:none;overflow-wrap:anywhere}
  #rfid-panel{background:#F5F8F6;border-color:var(--line)}
  :where(button,input,select,textarea,summary):focus-visible{outline:3px solid var(--copper);outline-offset:3px}
  button:disabled{cursor:not-allowed}input[type=checkbox],input[type=radio]{accent-color:var(--green)}
@@ -119,6 +120,18 @@
 .camera-focus-marker {position:absolute;width:42px;height:42px;border:2px solid #fff7d2;box-shadow:0 0 0 1px #534741;transform:translate(-50%,-50%);border-radius:10px;pointer-events:none;z-index:5}
 
 /* Inventory progress by loaded area. */
+.photo-import-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}
+.photo-import-summary p{margin:0;padding:10px;border-radius:8px;background:#EDF5F1;font-size:13px}
+.photo-import-choice{display:flex;align-items:center;gap:10px;margin:14px 0;font-weight:600;font-size:14px}
+.photo-import-choice input{width:20px;height:20px;flex:none}
+#photo-import-protection{font-size:13px;color:#475569}
+.photo-import-list{max-height:32vh;overflow:auto;margin-top:14px;list-style:none;padding:0}
+.photo-import-list li{padding:10px 0;border-bottom:1px solid #e2e8f0;font-size:13px;overflow-wrap:anywhere}
+.photo-import-list small{display:block;color:#64748b;margin-top:3px}
+#photo-import-error{color:#b91c1c;margin-top:12px;font-size:14px}
+.photo-download-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0}
+.photo-download-actions button{padding:12px;border-radius:10px;font-weight:700}
+.photo-download-actions p{width:100%;font-size:12px;color:#64748b;margin:0}
 .area-progress-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:14px 0}
 .area-progress-heading p{margin:3px 0 0;color:var(--muted)}
 #area-progress-summary{flex-shrink:0;background:#E9EEEA;color:var(--brand);padding:7px 10px;border-radius:999px;font-size:13px}

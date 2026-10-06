@@ -76,6 +76,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const photoDB = window.InventoryStorage;
 
+    const photoViewRequests=new WeakMap();
+    function photoKey(type,id){return type==='inventory'?String(id):(type==='additional'?state.additionalItems.find(item=>item.id===id)?.claveAsignada||'':'');}
+    function clearPhotoView(element){photoViewRequests.set(element,{});InventoryPhotoWatermark.clear(element);}
+    async function loadPhotoView(elementId,type,id,onReady){
+        const element=document.getElementById(elementId),request={};clearPhotoView(element);photoViewRequests.set(element,request);
+        try{
+            const blob=await photoDB.getItem('photos',type+'-'+id);
+            if(!blob||photoViewRequests.get(element)!==request)return;
+            if(await InventoryPhotoWatermark.render(element,blob,photoKey(type,id))&&photoViewRequests.get(element)===request)onReady();
+        }catch(error){if(photoViewRequests.get(element)===request)showToast('No se pudo mostrar la fotografía: '+escapeHTML(error.message),'error');}
+    }
+    const photoDownload=document.createElement('button');photoDownload.id='photo-download';photoDownload.type='button';photoDownload.dataset.action='photo';photoDownload.hidden=true;
+    const photoHint=document.createElement('p');photoHint.id='photo-original-hint';photoHint.hidden=true;photoHint.textContent='La clave aparece en la foto y en su copia guardada. El respaldo conserva el original para poder cambiar la clave sin perder calidad.';
+    const photoFooter=document.getElementById('photo-close-btn').parentElement;photoFooter.className='photo-download-actions';photoFooter.prepend(photoHint,photoDownload);
+    document.getElementById('nav-bulk-photo-btn').addEventListener('click',()=>{photoDownload.hidden=true;photoHint.hidden=true;clearPhotoView(document.getElementById('item-photo-img'));});
+    photoDownload.onclick=async()=>{
+        const {t:type,i:id}=document.getElementById('photo-input').dataset;photoDownload.disabled=true;
+        try{const original=await photoDB.getItem('photos',type+'-'+id);if(!original)throw Error('No se encontró la fotografía.');const key=photoKey(type,id),copy=await InventoryPhotoWatermark.stamp(original,key);await InventoryOutput.save(copy,(key||type+'-'+id).replace(/[^a-zA-Z0-9._-]/g,'_')+'.jpg');showToast('Foto guardada'+(key?' con su clave.':'.'),'success');}
+        catch(error){showToast('No se pudo guardar la foto: '+escapeHTML(error.message),'error');}finally{photoDownload.disabled=false;}
+    };
+
     function recalculateLocationCounts() { state.locations = {}; state.resguardantes.forEach(user => { let locs = user.locations?.length ? user.locations : [user.locationWithId]; locs.forEach(loc => { if(!loc) return; let base = (loc.match(/^(.*?)\s*(\d+)$/) ? RegExp.$1 : loc).trim().toUpperCase(); state.locations[base] = (state.locations[base] || 0) + 1; }); }); }
     function saveState() { const s = window.InventoryData.clean(state); photoDB.setItem('appData', 'mainState', s).catch(e => { console.error("Error saving state", e); showToast('No se pudo guardar. Exporta un respaldo antes de cerrar.', 'error'); }); updateDatalists(); }
     function showConfirm(title, text, onConfirm) { document.getElementById('modal-confirm').dataset.action = /^(Eliminar|Borrar|Quitar|Desubicar|Descartar|¡PELIGRO!)/.test(title) ? 'danger' : (document.activeElement?.closest('button')?.dataset.action || 'save'); document.getElementById('modal-title').textContent = title; document.getElementById('modal-text').textContent = text; document.getElementById('confirmation-modal').classList.add('show'); document.getElementById('modal-confirm').onclick = () => { onConfirm(); document.getElementById('confirmation-modal').classList.remove('show'); }; document.getElementById('modal-cancel').onclick = () => document.getElementById('confirmation-modal').classList.remove('show'); }
@@ -650,7 +671,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('add-adicional-btn').onclick=()=>{try{askEntryAndSave(readAdditional('ad'));}catch(error){showToast(error.message,'warning');}};
     window.saveAdic=item=>persistAdditional(item);
 
-    function updateDatalists() { const descripciones = [...new Set([...state.additionalItems.map(i=>i.descripcion),...state.inventory.map(i=>i.DESCRIPCION||i.DESCRripcion),...state.perfilesMagicos.map(i=>i.desc)])].filter(Boolean); const marcas = [...new Set([...state.additionalItems.map(i=>i.marca),...state.inventory.map(i=>i.MARCA)])].filter(Boolean); const modelos = [...new Set([...state.additionalItems.map(i=>i.modelo),...state.inventory.map(i=>i.MODELO)])].filter(Boolean); let descDatalist = document.getElementById('lista-descripciones'); if (!descDatalist) { descDatalist = document.createElement('datalist'); descDatalist.id = 'lista-descripciones'; document.body.appendChild(descDatalist); } descDatalist.innerHTML = descripciones.map(d=>`<option value="${escapeHTML(d)}">`).join(''); let marcaDatalist = document.getElementById('lista-marcas'); if (!marcaDatalist) { marcaDatalist = document.createElement('datalist'); marcaDatalist.id = 'lista-marcas'; document.body.appendChild(marcaDatalist); } marcaDatalist.innerHTML = marcas.map(m=>`<option value="${escapeHTML(m)}">`).join(''); let modeloDatalist = document.getElementById('lista-modelos'); if (!modeloDatalist) { modeloDatalist = document.createElement('datalist'); modeloDatalist.id = 'lista-modelos'; document.body.appendChild(modeloDatalist); } modeloDatalist.innerHTML = modelos.map(m=>`<option value="${escapeHTML(m)}">`).join(''); let respDatalist = document.getElementById('lista-responsables'); if (!respDatalist) { respDatalist = document.createElement('datalist'); respDatalist.id = 'lista-responsables'; document.body.appendChild(respDatalist); } respDatalist.innerHTML = (state.suggestedNames||[]).map(n=>`<option value="${escapeHTML(n)}">`).join(''); }
+    async function saveDismissedDescriptions(values) {
+        const next={...state,dismissedDescriptions:values};
+        await photoDB.setItem('appData','mainState',InventoryData.clean(next));
+        state.dismissedDescriptions=values;
+        updateDatalists();
+    }
+    function updateDatalists() {
+        const lists={
+            'lista-descripciones':InventoryDescriptionSuggestions.available(state),
+            'lista-marcas':[...new Set([...state.additionalItems.map(i=>i.marca),...state.inventory.map(i=>i.MARCA)])].filter(Boolean),
+            'lista-modelos':[...new Set([...state.additionalItems.map(i=>i.modelo),...state.inventory.map(i=>i.MODELO)])].filter(Boolean),
+            'lista-responsables':state.suggestedNames||[]
+        };
+        for(const [id,values] of Object.entries(lists)) {
+            let datalist=document.getElementById(id);
+            if(!datalist){datalist=document.createElement('datalist');datalist.id=id;document.body.appendChild(datalist);}
+            const options=document.createDocumentFragment();
+            for(const value of values){const option=document.createElement('option');option.value=value;options.append(option);}
+            datalist.replaceChildren(options);
+        }
+        InventoryDescriptionSuggestions.renderPanel(state,saveDismissedDescriptions);
+    }
 
     function renderAdicionales() {
         const areaFilter = document.getElementById('ad-area-filter').value; const userFilter = document.getElementById('ad-user-filter').value; const term = document.getElementById('global-search-input').value.toLowerCase().trim(); let list = state.additionalItems;
@@ -746,7 +788,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (i.ubicadoPor) { document.getElementById('ad-det-auditor').innerHTML = `<i class="fa-solid fa-user-check mr-1 text-green-600"></i> ${escapeHTML(InventoryTeam.label(i.ubicadoPor,i.ubicadoPorNumero))}<br><span class="text-sm">Auxiliado por: ${escapeHTML(InventoryTeam.label(i.auxiliadoPor,i.auxiliadoPorNumero))}</span>`; document.getElementById('ad-det-auditor-container').classList.remove('hidden'); } else document.getElementById('ad-det-auditor-container').classList.add('hidden');
         document.getElementById('ad-det-edit-btn').onclick = () => { document.getElementById('adicional-detail-view-modal').classList.remove('show'); editAdic(id); }; document.getElementById('ad-det-foto-btn').dataset.id = id; document.getElementById('ad-det-foto-btn').onclick = () => showPhoto('additional', id);
         document.getElementById('ad-det-photo').classList.add('hidden'); document.getElementById('ad-delete-photo-btn').classList.add('hidden'); document.getElementById('ad-det-no-photo').classList.remove('hidden');
-        if(state.additionalPhotos[id]) { photoDB.getItem('photos', `additional-${id}`).then(b => { if(b) { document.getElementById('ad-det-photo').src = URL.createObjectURL(b); document.getElementById('ad-det-photo').classList.remove('hidden'); document.getElementById('ad-delete-photo-btn').classList.remove('hidden'); document.getElementById('ad-det-no-photo').classList.add('hidden'); } }); } document.getElementById('adicional-detail-view-modal').classList.add('show');
+        clearPhotoView(document.getElementById('ad-det-photo'));
+        if(state.additionalPhotos[id])loadPhotoView('ad-det-photo','additional',id,()=>{document.getElementById('ad-det-photo').classList.remove('hidden');document.getElementById('ad-delete-photo-btn').classList.remove('hidden');document.getElementById('ad-det-no-photo').classList.add('hidden');});
+        document.getElementById('adicional-detail-view-modal').classList.add('show');
     };
 
     window.editAdic=id=>{
@@ -791,7 +835,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const locDetails = invUser && invUser.locationDetails && invUser.locationDetails[i.ubicacionEspecifica] ? invUser.locationDetails[i.ubicacionEspecifica] : {edificio:'N/A', piso:'N/A'}; document.getElementById('detail-view-infraestructura').innerHTML = `<i class="fa-solid fa-building mr-1"></i>${escapeHTML(locDetails.edificio)} | <i class="fa-solid fa-layer-group mr-1"></i>${escapeHTML(locDetails.piso)}`;
         if (i.UBICADO === 'SI' && i.ubicadoPor) { document.getElementById('detail-view-auditor').innerHTML = `<i class="fa-solid fa-user-check mr-1 text-green-600"></i> ${escapeHTML(InventoryTeam.label(i.ubicadoPor,i.ubicadoPorNumero))}<br><span class="text-sm">Auxiliado por: ${escapeHTML(InventoryTeam.label(i.auxiliadoPor,i.auxiliadoPorNumero))}</span>`; document.getElementById('detail-view-auditor-container').classList.remove('hidden'); } else document.getElementById('detail-view-auditor-container').classList.add('hidden');
         document.getElementById('detail-view-photo').classList.add('hidden'); document.getElementById('delete-active-photo-btn').classList.add('hidden'); document.getElementById('detail-view-no-photo').classList.remove('hidden');
-        if(state.photos[c]) { photoDB.getItem('photos', `inventory-${c}`).then(b => { if(b) { document.getElementById('detail-view-photo').src=URL.createObjectURL(b); document.getElementById('detail-view-photo').classList.remove('hidden'); document.getElementById('delete-active-photo-btn').classList.remove('hidden'); document.getElementById('detail-view-no-photo').classList.add('hidden'); } }); }
+        clearPhotoView(document.getElementById('detail-view-photo'));
+        if(state.photos[c])loadPhotoView('detail-view-photo','inventory',c,()=>{document.getElementById('detail-view-photo').classList.remove('hidden');document.getElementById('delete-active-photo-btn').classList.remove('hidden');document.getElementById('detail-view-no-photo').classList.add('hidden');});
 
         document.getElementById('detail-btn-ubicar').onclick = () => {
             if(!state.activeResguardante) return showToast('Activa un usuario', 'error');
@@ -929,6 +974,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.showPhoto = (type, id) => {
+        photoDownload.hidden=true;photoHint.hidden=true;clearPhotoView(document.getElementById('item-photo-img'));
         document.getElementById('photo-input').dataset.t = type; document.getElementById('photo-input').dataset.i = id; document.getElementById('photo-view-container').classList.add('hidden'); document.getElementById('photo-upload-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.remove('flex');
         let titleText = 'Fotografía';
         if(type === 'inventory') { const item = state.inventory.find(x => x['CLAVE UNICA'] === id); if(item) titleText = `${id} - ${(item.DESCRripcion || item.DESCRIPCION).substring(0, 40)}...`; }
@@ -938,28 +984,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('photo-modal-title').textContent = titleText; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-circle-camera mr-2"></i> Capturar Foto';
         let exists = type==='inventory' ? state.photos[id] : (type==='user' ? (state.userPhotos && state.userPhotos[id]) : (type==='location' ? state.locationPhotos && state.locationPhotos[id] : state.additionalPhotos[id]));
-        if(exists) { photoDB.getItem('photos', `${type}-${id}`).then(b => { if(b) { document.getElementById('item-photo-img').src=URL.createObjectURL(b); document.getElementById('photo-view-container').classList.remove('hidden'); } }); } else { document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); startCamera(); } document.getElementById('photo-modal').classList.add('show');
+        if(exists)loadPhotoView('item-photo-img',type,id,()=>{document.getElementById('photo-view-container').classList.remove('hidden');photoDownload.hidden=false;const key=photoKey(type,id);photoDownload.textContent=key?'Guardar foto con clave':'Guardar foto';photoHint.hidden=!key;});
+        else { document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); startCamera(); }
+        document.getElementById('photo-modal').classList.add('show');
     };
 
-    document.getElementById('capture-photo-btn').onclick = function() {
+    document.getElementById('capture-photo-btn').onclick = async function() {
         const btn = this; if(btn.disabled) return; const video = document.getElementById('camera-stream'); if (!video.videoWidth) return showToast('Enfocando...', 'warning');
         btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando...';
         const canvas = document.getElementById('photo-canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight; canvas.getContext('2d').drawImage(video, 0, 0);
-        canvas.toBlob(blob => {
-            const t = document.getElementById('photo-input').dataset.t; const id = document.getElementById('photo-input').dataset.i;
-            if (t === 'inventory-bulk') { const ids = document.getElementById('photo-input').dataset.bulkIds.split(','); ids.forEach(bulkId => { state.photos[bulkId] = true; }); saveState(); stopCamera(); document.getElementById('photo-modal').classList.remove('show'); document.getElementById('select-all-checkbox').checked = false; filterAndRenderInventory(); Promise.all(ids.map(bulkId => photoDB.setItem('photos', `inventory-${bulkId}`, blob))).then(() => showToast('Foto guardada', 'success')).finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-camera"></i>'; }); return; }
-            if(t==='inventory') state.photos[id]=true;
-            else if (t==='user') { if(!state.userPhotos) state.userPhotos = {}; state.userPhotos[id]=true; }
-            else if (t==='location') { if(!state.locationPhotos) state.locationPhotos = {}; state.locationPhotos[id]=true; }
-            else state.additionalPhotos[id]=true;
-
-            saveState(); const imgUrl = URL.createObjectURL(blob); stopCamera(); document.getElementById('photo-modal').classList.remove('show');
-            if (t === 'inventory' && document.getElementById('item-detail-view-modal').classList.contains('show')) { document.getElementById('detail-view-photo').src = imgUrl; document.getElementById('detail-view-photo').classList.remove('hidden'); document.getElementById('delete-active-photo-btn').classList.remove('hidden'); document.getElementById('detail-view-no-photo').classList.add('hidden'); } else if (t === 'additional' && document.getElementById('adicional-detail-view-modal').classList.contains('show')) { document.getElementById('ad-det-photo').src = imgUrl; document.getElementById('ad-det-photo').classList.remove('hidden'); document.getElementById('ad-delete-photo-btn').classList.remove('hidden'); document.getElementById('ad-det-no-photo').classList.add('hidden'); }
-
-            if (t === 'location' && document.getElementById('user-detail-view-modal').classList.contains('show')) { const [uid] = id.split('|'); showUserDetail(uid); }
-
-            filterAndRenderInventory(); renderAdicionales(); renderUsers(); photoDB.setItem('photos', `${escapeHTML(t)}-${id}`, blob).then(() => showToast('Foto guardada', 'success')).finally(() => { btn.disabled = false; });
-        }, 'image/jpeg', 0.8);
+        const input=document.getElementById('photo-input'),t=input.dataset.t,id=input.dataset.i,ids=t==='inventory-bulk'?input.dataset.bulkIds.split(','):[id],type=t==='inventory-bulk'?'inventory':t;
+        const close=document.getElementById('photo-close-btn');close.disabled=true;
+        try{
+            const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?.size?resolve(value):reject(Error('No se pudo capturar la imagen.')),'image/jpeg',0.8));
+            const field={inventory:'photos',additional:'additionalPhotos',user:'userPhotos',location:'locationPhotos'}[type];
+            if(!field)throw Error('No se reconoce el destino de la fotografía.');
+            const flags={...state[field]};for(const key of ids)flags[key]=true;
+            const next={...state,[field]:flags};
+            await photoDB.setItem('appData','mainState',InventoryData.clean(next),ids.map(key=>({store:'photos',key:type+'-'+key,value:blob})));
+            state=next;stopCamera();document.getElementById('photo-modal').classList.remove('show');
+            if(type==='inventory'&&t!=='inventory-bulk'&&document.getElementById('item-detail-view-modal').classList.contains('show'))showInvDetail(id);
+            if(type==='additional'&&document.getElementById('adicional-detail-view-modal').classList.contains('show'))showAdicDetail(id);
+            if(type==='location'&&document.getElementById('user-detail-view-modal').classList.contains('show'))showUserDetail(id.split('|')[0]);
+            if(t==='inventory-bulk')document.getElementById('select-all-checkbox').checked=false;
+            filterAndRenderInventory();renderAdicionales();renderUsers();showToast('Foto guardada','success');
+        }catch(error){showToast('No se pudo guardar la foto: '+escapeHTML(error.message),'error');}
+        finally{btn.disabled=false;close.disabled=false;btn.innerHTML='<i class="fa-solid fa-camera mr-2"></i> Capturar foto';}
     };
 
     document.getElementById('delete-photo-btn').onclick = () => { const t = document.getElementById('photo-input').dataset.t; const id = document.getElementById('photo-input').dataset.i; photoDB.db.transaction(['photos'], 'readwrite').objectStore('photos').delete(`${escapeHTML(t)}-${id}`); if(t==='inventory') delete state.photos[id]; else if (t==='user') delete state.userPhotos[id]; else if (t==='location') delete state.locationPhotos[id]; else delete state.additionalPhotos[id]; saveState(); showToast('Foto eliminada'); document.getElementById('photo-modal').classList.remove('show'); if (t === 'location' && document.getElementById('user-detail-view-modal').classList.contains('show')) { const [uid] = id.split('|'); showUserDetail(uid); } filterAndRenderInventory(); renderAdicionales(); renderUsers(); };
@@ -1171,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const invBlob = await photoDB.getItem('photos', `inventory-${inv['CLAVE UNICA']}`);
                             if(invBlob) {
                                 hasContent = true;
-                                const objectUrl = URL.createObjectURL(invBlob);
+                                const objectUrl = URL.createObjectURL(await InventoryPhotoWatermark.stamp(invBlob,inv['CLAVE UNICA']));
                                 gridPrintHtml += `<div class="print-photo-card"><div class="print-photo-title">${escapeHTML(inv['CLAVE UNICA'])}</div><img src="${objectUrl}"><div class="print-photo-desc">${escapeHTML((inv.DESCRIPCION||inv.DESCRripcion).substring(0, 45))}...<br><b>Marca:</b> ${escapeHTML(inv.MARCA||'-')} | <b>Serie:</b> ${escapeHTML(inv.SERIE||'-')}</div></div>`;
                                 gridPreviewHtml += `<div class="preview-photo-card"><div class="preview-photo-title text-indigo-700">${escapeHTML(inv['CLAVE UNICA'])}</div><img src="${objectUrl}"><div class="preview-photo-desc font-bold">${escapeHTML((inv.DESCRIPCION||inv.DESCRripcion).substring(0, 45))}...<br><span class="text-gray-500 font-medium"><b>M:</b> ${escapeHTML(inv.MARCA||'-')} | <b>S:</b> ${escapeHTML(inv.SERIE||'-')}</span></div></div>`;
                             }
@@ -1184,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const adBlob = await photoDB.getItem('photos', `additional-${ad.id}`);
                             if(adBlob) {
                                 hasContent = true;
-                                const objectUrl = URL.createObjectURL(adBlob);
+                                const objectUrl = URL.createObjectURL(await InventoryPhotoWatermark.stamp(adBlob,ad.claveAsignada));
                                 gridPrintHtml += `<div class="print-photo-card border-yellow-500"><div class="print-photo-title">${escapeHTML(ad.claveAsignada || 'ADICIONAL')}</div><img src="${objectUrl}"><div class="print-photo-desc">${escapeHTML((ad.descripcion).substring(0, 45))}...<br><b>Marca:</b> ${escapeHTML(ad.marca||'-')} | <b>Serie:</b> ${escapeHTML(ad.serie||'-')}</div></div>`;
                                 gridPreviewHtml += `<div class="preview-photo-card border-yellow-400 bg-yellow-50"><div class="preview-photo-title text-yellow-700">${escapeHTML(ad.claveAsignada || 'ADICIONAL')}</div><img src="${objectUrl}"><div class="preview-photo-desc font-bold">${escapeHTML((ad.descripcion).substring(0, 45))}...<br><span class="text-gray-500 font-medium"><b>M:</b> ${escapeHTML(ad.marca||'-')} | <b>S:</b> ${escapeHTML(ad.serie||'-')}</span></div></div>`;
                             }
@@ -1403,6 +1453,55 @@ document.addEventListener('DOMContentLoaded', async () => {
             showToast(InventoryOutput.native ? 'Respaldo guardado en la ubicación elegida.' : 'Respaldo comprobado. Revisa que el ZIP esté en Descargas.','success');
         } catch(error) {showToast('No se pudo completar el respaldo: '+error.message,'error');}
         finally {overlay.classList.remove('show');}
+    };
+    let photoImportPlan=null,photoImportLimit=40,photoImportBusy=false;
+    const photoImportDialog=document.getElementById('photo-import-dialog');
+    function renderPhotoImport(){
+        const plan=photoImportPlan;if(!plan)return;
+        const counts=plan.counts,replace=document.getElementById('photo-import-replace').checked;
+        const summary=document.getElementById('photo-import-summary');summary.replaceChildren();
+        for(const [label,count] of [['Fotos nuevas',counts.new],['Ya tienen foto',counts.existing],['Sin coincidencia segura',counts.unmatched+counts.ambiguous],['Vacías o dañadas',counts.invalid],['Repetidas',counts.duplicate],['Planos u otros archivos omitidos',counts.unsupported]]){
+            const p=document.createElement('p');p.textContent=label+': '+count;summary.append(p);
+        }
+        const list=document.getElementById('photo-import-list');list.replaceChildren();
+        const labels={new:'Agregar',existing:replace?'Reemplazar':'Conservar actual',unmatched:'Omitir',ambiguous:'Revisar coincidencia',invalid:'Archivo inválido',duplicate:'Omitir repetida',unsupported:'Omitir'};
+        for(const row of plan.rows.slice(0,photoImportLimit)){
+            const item=document.createElement('li'),title=document.createElement('strong'),detail=document.createElement('small');title.textContent=labels[row.status]+' · '+(row.label||row.sourceKey);
+            detail.textContent=row.status==='existing'?(replace?'Se reemplazará por la foto del ZIP.':'Se conservará la foto de esta sesión.'):row.reason;item.append(title,detail);list.append(item);
+        }
+        document.getElementById('photo-import-more').hidden=photoImportLimit>=plan.rows.length;
+        document.getElementById('photo-import-replace').disabled=!counts.existing||photoImportBusy;
+        const number=counts.new+(replace?counts.existing:0),button=document.getElementById('photo-import-confirm');button.disabled=!number||photoImportBusy;button.textContent='Importar '+number+' fotografía'+(number===1?'':'s');
+    }
+    document.getElementById('import-photos-btn').onclick=()=>document.getElementById('import-photos-input').click();
+    document.getElementById('import-photos-input').onchange=async event=>{
+        const file=event.target.files[0];if(!file)return;
+        const overlay=document.getElementById('loading-overlay');overlay.classList.add('show');document.getElementById('loading-text').textContent='Relacionando fotografías con esta sesión…';
+        try{
+            const source=await InventoryBackups.inspect(file);await photoDB.flush();
+            photoImportPlan=await InventoryPhotoImport.plan(state,source.state,source.images,await photoDB.getAllItems('photos'));photoImportLimit=40;
+            document.getElementById('photo-import-file-name').textContent=file.name;document.getElementById('photo-import-error').textContent='';document.getElementById('photo-import-replace').checked=false;
+            renderPhotoImport();photoImportDialog.showModal();
+        }catch(error){photoImportPlan=null;showToast('No se pudieron leer las fotografías: '+escapeHTML(error.message),'error');}
+        finally{overlay.classList.remove('show');event.target.value='';}
+    };
+    document.getElementById('photo-import-more').onclick=()=>{photoImportLimit+=40;renderPhotoImport();};
+    document.getElementById('photo-import-replace').onchange=renderPhotoImport;
+    document.getElementById('photo-import-cancel').onclick=()=>{if(!photoImportBusy)photoImportDialog.close();};
+    photoImportDialog.addEventListener('cancel',event=>{if(photoImportBusy)event.preventDefault();});
+    photoImportDialog.addEventListener('close',()=>{photoImportPlan=null;});
+    document.getElementById('photo-import-confirm').onclick=async()=>{
+        if(photoImportBusy||!photoImportPlan)return;
+        const replaceExisting=document.getElementById('photo-import-replace').checked;
+        photoImportBusy=true;renderPhotoImport();document.getElementById('photo-import-cancel').disabled=true;
+        document.getElementById('photo-import-error').textContent='';document.getElementById('photo-import-confirm').textContent='Guardando fotografías…';
+        try{
+            await photoDB.flush();const recoveryPoint=await InventoryRecovery.snapshot(photoDB,state,'Antes de importar solo fotografías');
+            const result=await InventoryPhotoImport.apply(photoDB,state,photoImportPlan,{replaceExisting,recoveryPoint});state=result.next;
+            filterAndRenderInventory();renderAdicionales();renderUsers();await renderRecoveryPoints();photoImportDialog.close();
+            showToast(result.imported+' fotografías importadas'+(result.replaced?' ('+result.replaced+' reemplazadas)':'')+'.','success');
+        }catch(error){document.getElementById('photo-import-error').textContent='No se completó la importación. Los datos anteriores se conservan. '+error.message;}
+        finally{photoImportBusy=false;document.getElementById('photo-import-cancel').disabled=false;if(photoImportPlan)renderPhotoImport();}
     };
     document.getElementById('import-session-btn').onclick = () => document.getElementById('import-file-input').click();
     document.getElementById('import-file-input').onchange = async e => {

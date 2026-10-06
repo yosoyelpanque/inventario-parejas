@@ -10,6 +10,12 @@ Excel, ZIP, JSON y TXT utilizan el selector de documentos de Android para elegir
 
 ## Compilación
 
+En Configuración → Respaldo y Recuperación → Importar solo fotos de un ZIP se pueden agregar fotografías tomadas en otra sesión sin reemplazar el inventario ni las notas. Revisa las coincidencias antes de confirmar; las fotos actuales se conservan por defecto y los archivos sin coincidencia segura se omiten. Las claves automáticas CD/ARR de adicionales no bastan para asociar bienes entre equipos: se necesita identidad compartida, serie única o clave manual verificable.
+
+Las fotografías de bienes muestran su clave en el visor y los álbumes. Guardar foto con clave descarga una copia JPEG con la marca incorporada. El almacenamiento y los ZIP conservan los originales para evitar marcas superpuestas al importar o cambiar la clave de un adicional.
+
+Las sugerencias de descripción tienen una × para quitarlas mientras escribes. El texto capturado se conserva. Configuración → Sugerencias de descripciones permite restaurarlas desde Eliminadas; estas preferencias viajan en el respaldo ZIP.
+
 Node 22+, JDK 21 y Android SDK compatibles con Capacitor 8. Ejecutar `npm ci`, `npm run android:prepare` y, dentro de `android`, `./gradlew assembleDebug` (Windows: `gradlew.bat assembleDebug`). `www` y `android` se generan; las modificaciones nativas permanentes viven en `native/android` y `tools/android-prepare.cjs`.
 
 Documentación: https://capacitorjs.com/docs/getting-started/environment-setup
