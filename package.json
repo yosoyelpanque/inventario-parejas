@@ -1,6 +1,6 @@
 {
   "name": "control-de-inventarios",
-  "version": "1.4.15",
+  "version": "1.4.16",
   "private": true,
   "scripts": {
     "start": "node tools/serve.cjs",
@@ -21,4 +21,3 @@
     "@capacitor/core": "8.5.2"
   }
 }
-

@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const type=profile.posesion==='Arrendamiento'?'rental':profile.posesion==='Propiedad del Grupo'?'group':$('clave').value.trim()?'external':'institutional';
             toggleAdicFormFields(prefix,type);
             if(type==='rental'){
-                const contract=profile.numContrato||profile.contrato||'LXVIDG AJ- 070/2024';
+                const contract=profile.numContrato||profile.contrato||'LXVIDGAJ- 070/2024';
                 $('dynamic-input').value=contract;autoValues[prefix]['dynamic-input']=contract;
             }
             warning.textContent='Serie reconocida: datos completados. Puedes corregirlos antes de guardar.';warning.classList.remove('hidden');
@@ -323,7 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderResponsablesSettings() {
         const container=document.getElementById('settings-responsables-list'),term=document.getElementById('responsables-search').value.toLocaleLowerCase('es');container.replaceChildren();
-        const people=(state.responsablesList||[]).filter(r=>[r.name,r.area,r.areaName,r.title].join(' ').toLocaleLowerCase('es').includes(term));
+        const people=InventoryListings.responsibles(state).filter(r=>[r.name,r.area,r.areaName,r.title].join(' ').toLocaleLowerCase('es').includes(term));
         if(!people.length)container.textContent='No hay responsables que mostrar.';
         for(const r of people){const card=document.createElement('section');card.className='area-review';const title=document.createElement('h3');title.textContent=r.name;const detail=document.createElement('p');detail.textContent='Área '+r.area+' · '+(r.areaName||state.areaNames?.[r.area]||'')+' · '+(r.title||'Cargo no indicado');const copy=document.createElement('button');copy.dataset.action='info';copy.textContent='Copiar nombre';copy.onclick=()=>copyRespText(r.name);card.append(title,detail,copy);container.append(card);}
     }
@@ -667,7 +667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('nav-bulk-note-btn').onclick = () => { const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para nota', 'warning'); document.getElementById('note-textarea').value = ''; document.getElementById('note-save-btn').dataset.c = 'BULK';document.getElementById('note-draft-status').textContent='Nota masiva: este borrador no se conserva al cerrar la app.'; renderNoteSuggestions(); document.getElementById('notes-modal').classList.add('show'); setTimeout(() => document.getElementById('note-textarea').focus(), 100); };
     document.getElementById('nav-bulk-photo-btn').onclick = () => { const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para foto', 'warning'); document.getElementById('photo-input').dataset.t = 'inventory-bulk'; document.getElementById('photo-input').dataset.bulkIds = Array.from(cbs).map(cb => cb.closest('tr').dataset.clave).join(','); document.getElementById('photo-view-container').classList.add('hidden'); document.getElementById('photo-upload-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); document.getElementById('photo-modal-title').textContent = `Foto Masiva (${cbs.length} bienes)`; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-camera-retro mr-2"></i> Capturar a Todos'; startCamera(); document.getElementById('photo-modal').classList.add('show'); };
-    document.getElementById('ad-bulk-autofill-btn').onclick = () => { if (!state.additionalItems || state.additionalItems.length === 0) return showToast('No hay adicionales.', 'warning'); saveSnapshot(); let updatedCount = 0; state.additionalItems.forEach(item => { if (item.serie) { const perfil = matchMagicProfile(String(item.serie).toUpperCase().trim()); if (perfil) { let changed = false; if (item.descripcion !== perfil.desc) { item.descripcion = perfil.desc; changed = true; } if (item.marca !== perfil.marca) { item.marca = perfil.marca; changed = true; } if (item.modelo !== perfil.modelo) { item.modelo = perfil.modelo; changed = true; } if (item.posesion !== (perfil.posesion||'Cámara')) { item.posesion = perfil.posesion||'Cámara'; if(item.posesion === 'Arrendamiento') item.numContrato = 'LXVIDG AJ- 070/2024'; changed = true; } if (changed) updatedCount++; } } }); if (updatedCount > 0) { recalculateAdicionalesKeys(); saveState(); renderAdicionales(); filterAndRenderInventory(); showToast(`Autocompletados ${updatedCount} bienes.`, 'success'); } else showToast('Sin coincidencias.', 'info'); };
+    document.getElementById('ad-bulk-autofill-btn').onclick = () => { if (!state.additionalItems || state.additionalItems.length === 0) return showToast('No hay adicionales.', 'warning'); saveSnapshot(); let updatedCount = 0; state.additionalItems.forEach(item => { if (item.serie) { const perfil = matchMagicProfile(String(item.serie).toUpperCase().trim()); if (perfil) { let changed = false; if (item.descripcion !== perfil.desc) { item.descripcion = perfil.desc; changed = true; } if (item.marca !== perfil.marca) { item.marca = perfil.marca; changed = true; } if (item.modelo !== perfil.modelo) { item.modelo = perfil.modelo; changed = true; } if (item.posesion !== (perfil.posesion||'Cámara')) { item.posesion = perfil.posesion||'Cámara'; if(item.posesion === 'Arrendamiento') item.numContrato = 'LXVIDGAJ- 070/2024'; changed = true; } if (changed) updatedCount++; } } }); if (updatedCount > 0) { recalculateAdicionalesKeys(); saveState(); renderAdicionales(); filterAndRenderInventory(); showToast(`Autocompletados ${updatedCount} bienes.`, 'success'); } else showToast('Sin coincidencias.', 'info'); };
 
     document.getElementById('adicional-form').onsubmit=e=>e.preventDefault();
     document.getElementById('add-adicional-btn').onclick=()=>{try{askEntryAndSave(readAdditional('ad'));}catch(error){showToast(error.message,'warning');}};
@@ -724,7 +724,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('ad-posesion').value = i.posesion || 'Cámara';
             let dynVal = '';
             if(i.posesion === 'Cámara') dynVal = i.areaProcedencia || '';
-            else if(i.posesion === 'Arrendamiento') dynVal = i.numContrato || 'LXVIDG AJ- 070/2024';
+            else if(i.posesion === 'Arrendamiento') dynVal = i.numContrato || 'LXVIDGAJ- 070/2024';
             else if(i.posesion === 'Propiedad del Grupo') dynVal = i.grupoParlamentario || '';
             document.getElementById('ad-dynamic-input').value = dynVal;
         }
@@ -859,20 +859,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     let noteSuggestionSaving=false;
     function renderNoteSuggestions() {
         const input=document.getElementById('note-textarea'),box=document.getElementById('note-suggestions');
-        const suggestions=InventoryNoteSuggestions.list(state,input.value);
+        const saved=InventoryNoteSuggestions.entries(state,input.value),templates=InventoryNoteSuggestions.templates(state,input.value);
+        const suggestions=[...saved.map(r=>({...r,official:!!r.templateId})),...templates.map(t=>({text:t.preview,templateId:t.id,official:true,template:true}))];
         box.replaceChildren();if(!suggestions.length)return;
-        const label=document.createElement('p');label.textContent='Sugerencias de notas guardadas';box.append(label);
-        for(const note of suggestions){
+        const label=document.createElement('p');label.textContent='Sugerencias guardadas y descripciones oficiales';box.append(label);
+        for(const suggestion of suggestions){
+            const note=suggestion.text;
             const row=document.createElement('div'),button=document.createElement('button'),remove=document.createElement('button');
-            row.className='note-suggestion-row';button.type=remove.type='button';button.dataset.action='note';button.className='note-suggestion';button.textContent=note;
-            button.onclick=()=>{input.value=note;input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();};
+            row.className='note-suggestion-row';button.type=remove.type='button';button.dataset.action='note';button.className='note-suggestion';button.textContent=note;if(suggestion.official){const badge=document.createElement('span');badge.className='note-official-badge';badge.textContent='✓ '+(suggestion.template?'Oficial':'De plantilla oficial');button.prepend(badge);}
+            button.onclick=()=>{if(suggestion.template){InventoryOfficialNoteEditor.open(suggestion.templateId,text=>{drafts.officialDescriptions??={};drafts.officialDescriptions[InventoryNoteSuggestions.key(text)]={text,templateId:suggestion.templateId};input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();});return;}input.value=note;input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();};
             remove.textContent='×';remove.className='note-suggestion-remove';remove.dataset.action='danger';remove.disabled=noteSuggestionSaving;
             remove.title='Eliminar sugerencia';remove.setAttribute('aria-label','Eliminar sugerencia de nota: '+note);
             remove.onclick=async()=>{
                 if(noteSuggestionSaving||document.getElementById('note-save-btn').disabled)return;
                 noteSuggestionSaving=true;document.getElementById('note-save-btn').disabled=true;document.getElementById('note-cancel-btn').disabled=true;renderNoteSuggestions();
                 try{
-                    const values=InventoryNoteSuggestions.dismiss(state,note);
+                    const values=InventoryNoteSuggestions.dismiss(state,suggestion.template?'official-template:'+suggestion.templateId:note);
                     await photoDB.setItem('appData','mainState',InventoryData.clean({...state,dismissedNoteSuggestions:values}));
                     state.dismissedNoteSuggestions=values;
                     showToast('Sugerencia eliminada. Las notas guardadas se conservan.','success');
@@ -887,11 +889,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('note-save-btn').onclick = async e => {
         const button=e.currentTarget,targetC=button.dataset.c,noteText=document.getElementById('note-textarea').value;
         const keys=targetC==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[targetC];
+        const officialNoteDescriptions=InventoryNoteSuggestions.remember(state,drafts.officialDescriptions?.[InventoryNoteSuggestions.key(noteText)]);
         const notes={...state.notes};for(const key of keys){if(noteText.trim())notes[key]=noteText;else delete notes[key];}
         button.disabled=true;
         try {
-            await photoDB.setItem('appData','mainState',InventoryData.clean({...state,notes}));
-            delete drafts.notes[targetC];await persistDrafts();saveSnapshot('Guardar nota');state.notes=notes;filterAndRenderInventory();renderNotasTab();document.getElementById('notes-modal').classList.remove('show');
+            await photoDB.setItem('appData','mainState',InventoryData.clean({...state,notes,officialNoteDescriptions}));
+            delete drafts.notes[targetC];await persistDrafts();saveSnapshot('Guardar nota');state.notes=notes;state.officialNoteDescriptions=officialNoteDescriptions;filterAndRenderInventory();renderNotasTab();document.getElementById('notes-modal').classList.remove('show');
             showToast('Nota guardada en este equipo','success');focusSearch();
         } catch {showToast('No se pudo guardar la nota. El texto sigue aquí; vuelve a intentarlo.','error');}
         finally {button.disabled=false;}
@@ -1286,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let userItems = [];
                 if(type === 'resguardo') { userItems = [...state.inventory.filter(i => i.UBICADO==='SI' && i['NOMBRE DE USUARIO'] === u.name).map(i=>({...i, _type:'inv'}))]; if(incAdic) userItems = [...userItems, ...state.additionalItems.filter(a => a.usuario === u.name).map(a=>({...a, _type:'adic'}))]; }
                 else if (type === 'pendientes') { userItems = state.inventory.filter(i => i.UBICADO !== 'SI' && i.areaOriginal === u.area).map(i=>({...i, _type:'inv'})); if(userItems.length === 0) continue; }
-                else if (type === 'adicionales') { userItems = state.additionalItems.filter(a => { const owner = additionalOwner(a); return consolidated ? areaUsers.includes(owner) : owner?.id === u.id; }).map(a=>({...a, usuario: additionalOwner(a)?.name || a.usuario, _type:'adic'})); if(userItems.length === 0) continue; }
+                else if (type === 'adicionales') { userItems = state.additionalItems.filter(a => { const owner = additionalOwner(a); return consolidated ? areaUsers.includes(owner) : owner?.id === u.id; }).map(a=>({...a, usuario: additionalOwner(a)?.name || a.usuario, _type:'adic'})).sort((a,b)=>String(a.claveAsignada||'').localeCompare(String(b.claveAsignada||''),'es',{numeric:true})); if(userItems.length === 0) continue; }
 
                 if (userItems.length === 0) continue;
 
@@ -1579,6 +1582,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         drafts=await photoDB.getItem('appData','captureDrafts')||{additional:{},notes:{}};
         const stored = await photoDB.getItem('appData', 'mainState');
         if (stored) state = {...state, ...window.InventoryData.clean(stored)};
+        for(const item of [...state.additionalItems,...state.perfilesMagicos])for(const field of ['numContrato','contrato'])if(typeof item[field]==='string'&&item[field].replace(/\s/g,'').toUpperCase()==='LXVIDGAJ-070/2024')item[field]='LXVIDGAJ- 070/2024';
         state.loggedIn = true;
         state.currentUser = team.active;
         state.companion = team.companion;

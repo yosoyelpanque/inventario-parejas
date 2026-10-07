@@ -10,6 +10,7 @@
  }
  // Names and users are retained after unloading; only listings and inventory imply a loaded area.
  function areas(state){return [...new Set([...(state.loadedListings||[]).map(b=>text(b.areaId)),...(state.inventory||[]).map(i=>text(i.areaOriginal))])].filter(Boolean);}
+ function responsibles(state){const loaded=new Set(areas(state));return (state.responsablesList||[]).filter(person=>loaded.has(text(person.area)));}
  function additionalOwner(state,item){return (state.resguardantes||[]).find(u=>item.resguardanteId?u.id===item.resguardanteId:u.name===item.usuario);}
  function additionalInInventory(state){const loaded=new Set(areas(state));return (state.additionalItems||[]).filter(item=>loaded.has(text(additionalOwner(state,item)?.area)));}
  function metadata(state,batches){
@@ -40,5 +41,5 @@
   next.areas=areas(next);
   return next;
  }
- root.InventoryListings={list,metadata,remove,areas,additionalOwner,additionalInInventory};if(typeof module!=='undefined')module.exports=root.InventoryListings;
+ root.InventoryListings={list,metadata,remove,areas,responsibles,additionalOwner,additionalInInventory};if(typeof module!=='undefined')module.exports=root.InventoryListings;
 })(globalThis);

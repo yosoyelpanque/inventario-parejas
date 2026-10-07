@@ -25,7 +25,7 @@
  function values(item,report,index){const extra=item._type==='adic';const key=extra?item.claveAsignada:item['CLAVE UNICA'];const common=[key,item.descripcion||item.DESCRIPCION||item.DESCRripcion,item.marca||item.MARCA,item.modelo||item.MODELO,item.serie||item.SERIE];
   if(report.type==='resguardo')return [index,...common,item.areaOriginal||item.areaProcedencia||report.area];
   if(report.type==='pendientes')return [index,...common];
-  let origin=item.areaProcedencia||'';if(item.posesion==='Arrendamiento')origin=item.numContrato||'';else if(item.personal==='Si')origin='Bien personal';else if(item.posesion==='Propiedad del Grupo')origin=item.grupoParlamentario||'Grupo parlamentario';
+  let origin=item.areaProcedencia||'';if(item.posesion==='Arrendamiento')origin=(!item.numContrato||String(item.numContrato).replace(/\s/g,'').toUpperCase()==='LXVIDGAJ-070/2024')?'LXVIDGAJ- 070/2024':item.numContrato;else if(item.personal==='Si')origin='Bien personal';else if(item.posesion==='Propiedad del Grupo')origin=item.grupoParlamentario||'Grupo parlamentario';
   return [index,origin,...common,[item.usuario||report.user,item.ubicacionEspecifica].filter(Boolean).join(' / ')];
  }
  async function render(reports,options){

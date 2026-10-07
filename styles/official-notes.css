@@ -1,0 +1,23 @@
+#note-suggestions{max-height:230px}
+#note-suggestions>p{font-size:12px;font-weight:700;margin:10px 0 5px;color:#475569}
+.note-official-badge{display:inline-flex;align-items:center;gap:4px;background:#E8F5EE;color:#145B39;border:1px solid #90C6A6;border-radius:5px;padding:2px 5px;margin:0 0 5px;font-size:11px;font-weight:700;line-height:1.4}
+.note-official-text{display:block}
+.note-suggestions-more{font-size:12px;padding:8px 10px;border-radius:8px;margin:5px 0}
+.official-description-dialog{width:min(680px,calc(100vw - 24px));max-height:90dvh;padding:0;border:0;border-radius:16px;color:#24343B;background:white;box-shadow:0 20px 70px #0005}
+.official-description-dialog::backdrop{background:#122b27aa}
+.official-description-dialog form{padding:20px}
+.official-description-dialog h2{font-size:21px;font-weight:800;margin:0 0 8px}
+.official-description-dialog p{font-size:14px;margin:10px 0;line-height:1.45}
+.official-template-name{font-weight:700;color:#03564B}
+.official-description-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.official-description-fields label{min-width:0;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}
+.official-description-fields input{min-width:0;width:100%;min-height:44px;padding:10px;border:1px solid #AABDB5;border-radius:8px;font-size:16px;background:white;color:#24343B}
+.official-description-fields input:focus{outline:2px solid #03564B;outline-offset:2px}
+.official-description-dialog .official-example-hint{font-size:12px;color:#58656B}
+.official-preview-label{font-size:13px;font-weight:700}
+.official-description-preview{padding:12px;background:#EEF5F1;border-radius:8px;overflow-wrap:anywhere;white-space:pre-wrap;min-height:60px}
+.official-description-error{color:#A01828;font-weight:700}
+.official-description-error:empty{display:none}
+.official-description-dialog footer{display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:-20px;background:white;padding:14px 0 4px}
+.official-description-dialog button{min-height:44px;padding:10px 14px;border-radius:8px;font-size:14px;font-weight:700}
+@media(max-width:600px){#note-suggestions{max-height:180px}.official-description-fields{grid-template-columns:1fr}.official-description-dialog form{padding:16px}.official-description-dialog footer{bottom:-16px}.official-description-dialog footer button{flex:1}}

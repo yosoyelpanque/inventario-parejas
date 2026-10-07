@@ -75,6 +75,42 @@ test('adicionales usan identidad del resguardante antes que nombre y solo aparec
  assert.deepEqual(input,before);
 });
 
+test('directorio muestra responsables solo de áreas cargadas y conserva ceros iniciales',()=>{
+ const input={loadedListings:[{areaId:' 0604500 '},{areaId:9}],inventory:[{areaOriginal:' 0700000 '}],
+  areas:['0999999'],areaNames:{'0999999':'Histórica'},resguardantes:[{area:'0888888'}],
+  responsablesList:[
+   {area:'0604500',name:'CENTRO'},{area:'604500',name:'OTRA CLAVE'},
+   {area:' 0700000 ',name:'ARCHIVO'},{area:'9',name:'NUEVE'},
+   {area:'0999999',name:'HISTÓRICO'},{area:'0888888',name:'CON CAPTURAS'},{area:'',name:'SIN ÁREA'}
+  ]};
+ const before=structuredClone(input);
+ assert.deepEqual(L.responsibles(input).map(person=>person.name),['CENTRO','ARCHIVO','NUEVE']);
+ assert.deepEqual(L.responsibles({responsablesList:input.responsablesList,areas:input.areas,areaNames:input.areaNames,resguardantes:input.resguardantes}),[]);
+ assert.deepEqual(L.responsibles({inventory:[],loadedListings:[]}),[]);
+ assert.deepEqual(input,before);
+});
+
+test('responsable permanece al quitar un libro, se oculta al quitar el último y reaparece al deshacer o recargar',()=>{
+ const input=fixture();
+ input.responsablesList.push({area:'0700000',name:'RESPONSABLE ARCHIVO'},{area:'0999999',name:'HISTÓRICO'});
+ const before=structuredClone(input),first=L.remove(input,'0604500','Cámara');
+ assert.deepEqual(L.responsibles(first).map(person=>person.area),['0604500','0700000']);
+ const second=L.remove(first,'0604500','Bienes muebles');
+ assert.deepEqual(L.responsibles(second).map(person=>person.area),['0700000']);
+ assert.deepEqual(second.responsablesList,before.responsablesList);
+ const serialized=JSON.parse(JSON.stringify(second));
+ assert.deepEqual(L.responsibles(serialized).map(person=>person.area),['0700000']);
+ const undone=structuredClone(first);
+ assert.deepEqual(L.responsibles(undone).map(person=>person.area),['0604500','0700000']);
+ const reloaded=L.metadata(second,[{areaId:'0604500',bookType:'Cámara',areaName:'Centro'}]).next;
+ assert.deepEqual(L.responsibles(reloaded).map(person=>person.area),['0604500','0700000']);
+ assert.deepEqual(reloaded.responsablesList,before.responsablesList);
+ const empty=L.remove(second,'0700000','Cámara');
+ assert.deepEqual(L.responsibles(empty),[]);
+ for(const field of ['responsablesList','additionalItems','notes','archivedNotes','photos','additionalPhotos','resguardantes','locations','activeResguardante','areaNames'])assert.deepEqual(empty[field],before[field],field+' debe conservarse');
+ assert.deepEqual(input,before);
+});
+
 test('quitar listados persiste en JSON y ZIP; recargarlos vuelve a mostrar los adicionales conservados',async()=>{
  const data=require('../src/data.js'),JSZip=require('../vendor/jszip.js'),input=fixture();
  const removed=L.remove(L.remove(input,'0604500','Cámara'),'0604500','Bienes muebles');
