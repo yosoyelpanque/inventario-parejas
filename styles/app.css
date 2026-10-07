@@ -255,3 +255,5 @@
 #report-search-results button:focus-visible{outline:3px solid #C48D5C;outline-offset:2px}
 
 .team-card #team-back,.team-card #team-solo{background:transparent;color:#03564B;padding:6px 0;font-size:13px;text-align:left;width:fit-content}.team-card #team-back{margin-bottom:12px}.team-card #team-back[hidden],.team-swap[hidden]{display:none}
+
+.inventory-empty-message { max-width:calc(100vw - 96px); white-space:normal; text-align:left; }

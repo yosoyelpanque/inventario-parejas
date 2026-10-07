@@ -1,11 +1,17 @@
 (function(root){
  'use strict';
- const key=(area,book)=>JSON.stringify([area,book]);
+ const text=value=>String(value??'').trim();
+ const bookKey=value=>text(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').toUpperCase();
+ const key=(area,book)=>JSON.stringify([text(area),bookKey(book)]);
  function list(state){
   const groups=new Map((state.loadedListings||[]).map(b=>[key(b.areaId,b.bookType),{...b,count:0}]));
   for(const i of state.inventory){const id=key(i.areaOriginal,i.listadoOriginal);if(!groups.has(id))groups.set(id,{areaId:i.areaOriginal,bookType:i.listadoOriginal,dates:[],count:0});groups.get(id).count++;}
   return [...groups.values()];
  }
+ // Names and users are retained after unloading; only listings and inventory imply a loaded area.
+ function areas(state){return [...new Set([...(state.loadedListings||[]).map(b=>text(b.areaId)),...(state.inventory||[]).map(i=>text(i.areaOriginal))])].filter(Boolean);}
+ function additionalOwner(state,item){return (state.resguardantes||[]).find(u=>item.resguardanteId?u.id===item.resguardanteId:u.name===item.usuario);}
+ function additionalInInventory(state){const loaded=new Set(areas(state));return (state.additionalItems||[]).filter(item=>loaded.has(text(additionalOwner(state,item)?.area)));}
  function metadata(state,batches){
   const next=structuredClone(state),groups=new Map(list(state).map(b=>[key(b.areaId,b.bookType),b])),changes=[];
   next.responsablesList=next.responsablesList||[];next.areaNames=next.areaNames||{};
@@ -31,7 +37,8 @@
  function remove(state,area,book){
   const next=structuredClone(state);next.inventory=next.inventory.filter(i=>key(i.areaOriginal,i.listadoOriginal)!==key(area,book));
   next.loadedListings=list(state).filter(b=>key(b.areaId,b.bookType)!==key(area,book)).map(({count,...b})=>b);
+  next.areas=areas(next);
   return next;
  }
- root.InventoryListings={list,metadata,remove};if(typeof module!=='undefined')module.exports=root.InventoryListings;
+ root.InventoryListings={list,metadata,remove,areas,additionalOwner,additionalInInventory};if(typeof module!=='undefined')module.exports=root.InventoryListings;
 })(globalThis);
