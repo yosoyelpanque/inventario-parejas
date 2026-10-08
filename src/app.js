@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateActiveUserLocationSelect(); b.classList.remove('hidden');
         } else b.classList.add('hidden');
     }
-    document.getElementById('deactivate-user-btn').onclick = () => { state.activeResguardante=null; updateBanner(); renderUsers(); };
+    document.getElementById('deactivate-user-btn').onclick = () => { state.activeResguardante=null; saveState();updateBanner(); renderUsers(); };
 
 
     let editingLocation=null;
@@ -645,16 +645,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('nav-clear-search-btn').onclick = () => { document.getElementById('global-search-input').value = ''; document.getElementById('status-filter').value = 'all'; document.getElementById('area-filter-inventory').value = 'all'; document.getElementById('book-type-filter').value = 'all'; if(document.getElementById('user-filter-inventory')) document.getElementById('user-filter-inventory').value = 'all'; if(document.getElementById('location-filter-inventory')) { document.getElementById('location-filter-inventory').innerHTML = '<option value="all">Todas las ubicaciones</option>'; document.getElementById('location-filter-inventory').value = 'all'; } currentPage = 1; filterAndRenderInventory(); };
     document.getElementById('prev-page-btn').onclick = () => {if(currentPage>1){currentPage--; filterAndRenderInventory();}}; document.getElementById('next-page-btn').onclick = () => {if(currentPage<Math.ceil(filtered.length/itemsPerPage)){currentPage++; filterAndRenderInventory();}}; document.getElementById('select-all-checkbox').onchange = e => document.querySelectorAll('.inv-cb').forEach(c=>c.checked=e.target.checked);
 
-    function doAction(action) {
-        const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes', 'warning'); if(action!=='desubicar' && !state.activeResguardante) return showToast('¡Activa un usuario primero!', 'error');
+    async function assignSelected(keys,retag=false){
+        if(!state.resguardantes.length)return showToast('Registra un usuario y su ubicación primero.','warning');
+        const destination=state.activeResguardante?{userId:state.activeResguardante.id,location:document.getElementById('active-user-location-select').value||state.activeResguardante.locationWithId}:await InventoryAssignmentDialog.choose(state.resguardantes,keys.length);
+        if(!destination)return;
+        const proceed=async()=>{document.getElementById('loading-overlay').classList.add('show');try{const next=InventoryAssignment.assign(state,keys,destination.userId,destination.location,retag);await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot('Ubicar bienes');state=next;keys.forEach(addToSearchHistory);renderDashboard();filterAndRenderInventory();updateActiveUserLocationSelect();document.getElementById('select-all-checkbox').checked=false;document.getElementById('item-detail-view-modal').classList.remove('show');showToast('Bienes registrados en el destino seleccionado.','success');}catch(error){showToast(error.message,'error');}finally{document.getElementById('loading-overlay').classList.remove('show');}};
+        if(keys.some(key=>state.inventory.find(i=>i['CLAVE UNICA']===key)?.UBICADO==='SI'))showConfirm('Reasignar bienes','Algunos bienes ya tienen asignación. ¿Deseas cambiarlos al destino seleccionado?',proceed);else await proceed();
+    }
 
-        if (action === 'desubicar') {
-            showConfirm('Desubicar Bienes', '¿Seguro que deseas quitar la asignación de estos bienes?', () => { executeGlobalAction('desubicar', cbs); });
-        } else {
-            const hasLocated = Array.from(cbs).some(cb => { const clv = cb.closest('tr').dataset.clave; const i = state.inventory.find(x=>x['CLAVE UNICA']===clv); return i && i.UBICADO === 'SI'; });
-            if (hasLocated) { showConfirm('Reasignar Bienes', 'Algunos bienes ya están asignados a un usuario. ¿Deseas reasignarlos?', () => { executeGlobalAction(action, cbs); }); }
-            else executeGlobalAction(action, cbs);
-        }
+    function doAction(action) {
+        const cbs=document.querySelectorAll('.inv-cb:checked');if(!cbs.length)return showToast('Selecciona bienes','warning');
+        if(action==='desubicar')showConfirm('Desubicar bienes','¿Seguro que deseas quitar la asignación de estos bienes?',()=>executeGlobalAction('desubicar',cbs));
+        else assignSelected([...cbs].map(cb=>cb.closest('tr').dataset.clave));
     }
 
     function executeGlobalAction(action, cbs) {
@@ -840,16 +842,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearPhotoView(document.getElementById('detail-view-photo'));
         if(state.photos[c])loadPhotoView('detail-view-photo','inventory',c,()=>{document.getElementById('detail-view-photo').classList.remove('hidden');document.getElementById('delete-active-photo-btn').classList.remove('hidden');document.getElementById('detail-view-no-photo').classList.add('hidden');});
 
-        document.getElementById('detail-btn-ubicar').onclick = () => {
-            if(!state.activeResguardante) return showToast('Activa un usuario', 'error');
-            const proceed = () => { saveSnapshot(); i.UBICADO='SI'; i.RE_ETIQUETADO='NO'; i['NOMBRE DE USUARIO']=state.activeResguardante.name; i.ubicacionEspecifica = document.getElementById('active-user-location-select').value || state.activeResguardante.locationWithId; i.areaIncorrecta = i.areaOriginal !== state.activeResguardante.area; Object.assign(i, InventoryTeam.attribution(state)); addToSearchHistory(c); saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast('Asignado'); document.getElementById('item-detail-view-modal').classList.remove('show'); focusSearch(); };
-            if(i.UBICADO === 'SI') { showConfirm('Bien ya ubicado', 'Este bien ya está asignado a otro usuario. ¿Deseas reasignarlo?', proceed); } else proceed();
-        };
-        document.getElementById('detail-btn-reetiquetar').onclick = () => {
-            if(!state.activeResguardante) return showToast('Activa un usuario', 'error');
-            const proceed = () => { saveSnapshot(); i.UBICADO='SI'; i.RE_ETIQUETADO='SI'; i['NOMBRE DE USUARIO']=state.activeResguardante.name; i.ubicacionEspecifica = document.getElementById('active-user-location-select').value || state.activeResguardante.locationWithId; i.areaIncorrecta = i.areaOriginal !== state.activeResguardante.area; Object.assign(i, InventoryTeam.attribution(state)); addToSearchHistory(c); saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast('Reetiquetado'); document.getElementById('item-detail-view-modal').classList.remove('show'); focusSearch(); };
-            if(i.UBICADO === 'SI') { showConfirm('Bien ya ubicado', 'Este bien ya está asignado. ¿Deseas reetiquetarlo y reasignarlo?', proceed); } else proceed();
-        };
+        document.getElementById('detail-btn-ubicar').onclick=()=>assignSelected([c]);
+        document.getElementById('detail-btn-reetiquetar').onclick=()=>assignSelected([c],true);
         document.getElementById('detail-btn-desubicar').onclick = () => {
             showConfirm('Quitar asignación', '¿Seguro que deseas quitar este bien del resguardo actual?', () => { saveSnapshot(); i.UBICADO='NO'; i.RE_ETIQUETADO='NO'; i['NOMBRE DE USUARIO']=''; i.ubicacionEspecifica=''; Object.assign(i, InventoryTeam.clear()); saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast('Asignación retirada'); showInvDetail(c); });
         };
@@ -955,6 +949,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     window.renderNotasTab = function() {
         renderRetagList();
+        const reviews=document.getElementById('additional-review-list');reviews.replaceChildren();
+        const query=document.querySelector('.tab-btn.active')?.dataset.tab==='notas'?document.getElementById('global-search-input').value:'';
+        for(const item of state.additionalItems){const message=InventoryAssignment.review(item);if(!message||window.viewArchivedNotes||!InventorySearch.matches(query,item.claveAsignada,item.descripcion,item.usuario,item.areaProcedencia,message))continue;const card=document.createElement('article'),title=document.createElement('strong'),text=document.createElement('p'),open=document.createElement('button');title.textContent=item.claveAsignada+' · '+item.descripcion;text.textContent=message;open.textContent='Revisar adicional';open.dataset.action='edit';open.onclick=()=>showAdicDetail(item.id);card.append(title,text,open);reviews.append(card);}
+        document.getElementById('additional-review-section').hidden=!reviews.children.length;
         const container = document.getElementById('notas-list-container'); const pagContainer = document.getElementById('notas-pagination-container'); if(!state.archivedNotes) state.archivedNotes = {};
         const targetObj = window.viewArchivedNotes ? state.archivedNotes : state.notes; const keys = filteredNoteKeys();
         for(const key of selectedNotes)if(!keys.includes(key))selectedNotes.delete(key);
@@ -1008,18 +1006,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('photo-modal-title').textContent = titleText; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-circle-camera mr-2"></i> Capturar Foto';
         let exists = type==='inventory' ? state.photos[id] : (type==='user' ? (state.userPhotos && state.userPhotos[id]) : (type==='location' ? state.locationPhotos && state.locationPhotos[id] : state.additionalPhotos[id]));
         if(exists)loadPhotoView('item-photo-img',type,id,()=>{document.getElementById('photo-view-container').classList.remove('hidden');photoDownload.hidden=false;const key=photoKey(type,id);photoDownload.textContent=key?'Guardar foto con clave':'Guardar foto';photoHint.hidden=!key;});
-        else { document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); startCamera(); }
+        // Camera starts only when the user chooses it; file selection does not require camera permission.
         document.getElementById('photo-modal').classList.add('show');
     };
 
-    document.getElementById('capture-photo-btn').onclick = async function() {
-        const btn = this; if(btn.disabled) return; const video = document.getElementById('camera-stream'); if (!video.videoWidth) return showToast('Enfocando...', 'warning');
-        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando...';
-        const canvas = document.getElementById('photo-canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight; canvas.getContext('2d').drawImage(video, 0, 0);
+    async function savePhotoBlob(blob){
         const input=document.getElementById('photo-input'),t=input.dataset.t,id=input.dataset.i,ids=t==='inventory-bulk'?input.dataset.bulkIds.split(','):[id],type=t==='inventory-bulk'?'inventory':t;
-        const close=document.getElementById('photo-close-btn');close.disabled=true;
-        try{
-            const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?.size?resolve(value):reject(Error('No se pudo capturar la imagen.')),'image/jpeg',0.8));
             const field={inventory:'photos',additional:'additionalPhotos',user:'userPhotos',location:'locationPhotos'}[type];
             if(!field)throw Error('No se reconoce el destino de la fotografía.');
             const flags={...state[field]};for(const key of ids)flags[key]=true;
@@ -1031,9 +1023,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if(type==='location'&&document.getElementById('user-detail-view-modal').classList.contains('show'))showUserDetail(id.split('|')[0]);
             if(t==='inventory-bulk')document.getElementById('select-all-checkbox').checked=false;
             filterAndRenderInventory();renderAdicionales();renderUsers();showToast('Foto guardada','success');
-        }catch(error){showToast('No se pudo guardar la foto: '+escapeHTML(error.message),'error');}
-        finally{btn.disabled=false;close.disabled=false;btn.innerHTML='<i class="fa-solid fa-camera mr-2"></i> Capturar foto';}
-    };
+    }
+    async function processPhoto(producer){
+        const controls=['capture-photo-btn','upload-photo-btn','choose-camera-btn','photo-close-btn'].map(id=>document.getElementById(id));controls.forEach(b=>b.disabled=true);
+        try{await savePhotoBlob(await producer());}catch(error){showToast('No se pudo guardar la foto: '+error.message,'error');}finally{controls.forEach(b=>b.disabled=false);document.getElementById('photo-input').value='';}
+    }
+    document.getElementById('capture-photo-btn').onclick=()=>processPhoto(async()=>{const video=document.getElementById('camera-stream');if(!video.videoWidth)throw Error('Espera a que la cámara muestre la imagen.');const canvas=document.getElementById('photo-canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?.size?resolve(blob):reject(Error('No se pudo capturar.')),'image/jpeg',0.8));});
+    document.getElementById('upload-photo-btn').onclick=()=>{stopCamera();document.getElementById('photo-input').click();};
+    document.getElementById('choose-camera-btn').onclick=()=>{document.getElementById('camera-view-container').classList.remove('hidden');document.getElementById('camera-view-container').classList.add('flex');startCamera();};
+    document.getElementById('photo-input').onchange=event=>{const file=event.target.files?.[0];if(!file)return;processPhoto(async()=>{if(file.size>30*1024*1024)throw Error('La imagen excede 30 MB.');const image=new Image(),url=URL.createObjectURL(file);try{image.src=url;await image.decode();const scale=Math.min(1,1600/Math.max(image.naturalWidth,image.naturalHeight)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?.size?resolve(blob):reject(Error('No se pudo abrir la imagen.')),'image/jpeg',0.9));}finally{URL.revokeObjectURL(url);}});};
 
     document.getElementById('delete-photo-btn').onclick = () => { const t = document.getElementById('photo-input').dataset.t; const id = document.getElementById('photo-input').dataset.i; photoDB.db.transaction(['photos'], 'readwrite').objectStore('photos').delete(`${escapeHTML(t)}-${id}`); if(t==='inventory') delete state.photos[id]; else if (t==='user') delete state.userPhotos[id]; else if (t==='location') delete state.locationPhotos[id]; else delete state.additionalPhotos[id]; saveState(); showToast('Foto eliminada'); document.getElementById('photo-modal').classList.remove('show'); if (t === 'location' && document.getElementById('user-detail-view-modal').classList.contains('show')) { const [uid] = id.split('|'); showUserDetail(uid); } filterAndRenderInventory(); renderAdicionales(); renderUsers(); };
     function deletePhotoFromModal(type, id) { showConfirm('Eliminar Foto', '¿Eliminar y tomar nueva?', () => { photoDB.db.transaction(['photos'], 'readwrite').objectStore('photos').delete(`${type}-${id}`); if(type === 'inventory') { delete state.photos[id]; document.getElementById('detail-view-photo').classList.add('hidden'); document.getElementById('delete-active-photo-btn').classList.add('hidden'); document.getElementById('detail-view-no-photo').classList.remove('hidden'); } else if (type === 'additional') { delete state.additionalPhotos[id]; document.getElementById('ad-det-photo').classList.add('hidden'); document.getElementById('ad-delete-photo-btn').classList.add('hidden'); document.getElementById('ad-det-no-photo').classList.remove('hidden'); } saveState(); filterAndRenderInventory(); renderAdicionales(); setTimeout(() => showPhoto(type, id), 200); }); }
@@ -1442,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(async () => {
             try {
                 const getLoc = (i) => { const u = state.resguardantes.find(r => r.name === (i['NOMBRE DE USUARIO'] || i.usuario)); return (u && u.locationDetails && u.locationDetails[i.ubicacionEspecifica]) ? u.locationDetails[i.ubicacionEspecifica] : { edificio: 'N/A', piso: 'N/A' }; };
-                const mapRow = (i) => { const loc = getLoc(i); const isAdic = i._type === 'adic'; const c = isAdic ? i.claveAsignada : i['CLAVE UNICA']; return { 'Clave Única': c || '', 'Descripción': i.DESCRripcion || i.DESCRIPCION || i.descripcion || '', 'Marca': i.MARCA || i.marca || '', 'Modelo': i.MODELO || i.modelo || '', 'Serie': i.SERIE || i.serie || '', 'Área Original': i.areaOriginal || '', 'Usuario Asignado': i['NOMBRE DE USUARIO'] || i.usuario || '', 'Ubicación': i.ubicacionEspecifica || '', 'Edificio': loc.edificio || '', 'Piso': loc.piso || '', ...InventoryTeam.excel(i), 'Requiere Etiqueta': isAdic ? 'N/A' : (i.RE_ETIQUETADO === 'SI' ? 'SÍ' : 'NO'), 'Tiene Foto': (isAdic ? state.additionalPhotos[i.id] : state.photos[c]) ? 'SÍ' : 'NO', 'Nota': state.notes[c] || '' }; };
+                const mapRow = (i) => { const loc = getLoc(i); const isAdic = i._type === 'adic'; const c = isAdic ? i.claveAsignada : i['CLAVE UNICA']; return { 'Clave Única': c || '', 'Descripción': i.DESCRripcion || i.DESCRIPCION || i.descripcion || '', 'Marca': i.MARCA || i.marca || '', 'Modelo': i.MODELO || i.modelo || '', 'Serie': i.SERIE || i.serie || '', 'Área Original': i.areaOriginal || i.areaProcedencia || '', 'Área del Usuario': InventoryAssignment.owner(state,i)?.area || '', 'Usuario Asignado': i['NOMBRE DE USUARIO'] || i.usuario || '', 'Ubicación': i.ubicacionEspecifica || '', 'Edificio': loc.edificio || '', 'Piso': loc.piso || '', ...InventoryTeam.excel(i), 'Requiere Etiqueta': isAdic ? 'N/A' : (i.RE_ETIQUETADO === 'SI' ? 'SÍ' : 'NO'), 'Tiene Foto': (isAdic ? state.additionalPhotos[i.id] : state.photos[c]) ? 'SÍ' : 'NO', 'Nota': state.notes[c] || '' }; };
                 const invRows = state.inventory.map(i => { return mapRow({...i,_type:'inv'}); }); const adicCamara = state.additionalItems.filter(i => i.posesion === 'Cámara' && i.personal !== 'Si').map(i => { return mapRow({...i,_type:'adic'}); }); const adicArrend = state.additionalItems.filter(i => i.posesion === 'Arrendamiento').map(i => { return mapRow({...i,_type:'adic'}); }); const adicPers = state.additionalItems.filter(i => i.personal === 'Si').map(i => { return mapRow({...i,_type:'adic'}); });
                 const adicGrupo=state.additionalItems.filter(i=>(i.tipoBien==='group'||i.posesion==='Propiedad del Grupo')).map(i=>mapRow({...i,_type:'adic'}));const wb = XLSX.utils.book_new();if(adicGrupo.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(adicGrupo),'Grupos Parlamentarios'); if(invRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invRows), "Bienes Inventario"); if(adicCamara.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicCamara), "Adicionales Cámara"); if(adicArrend.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicArrend), "Adic. Arrendamiento"); if(adicPers.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicPers), "Bienes Personales"); await InventoryOutput.excel(wb, `Inventario_Completo_${new Date().toISOString().slice(0,10)}.xlsx`); showToast('Exportado con éxito', 'success');
             } catch (error) { showToast('Error al exportar Excel', 'error'); } finally { document.getElementById('loading-overlay').classList.remove('show'); }
