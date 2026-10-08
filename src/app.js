@@ -1,7 +1,7 @@
 
 
 const NOMBRES_AREAS = { "131100": "Dirección de Almacén e Inventarios", "131000": "Dirección de Almacén e Inventarios", "1": "Dirección General", "2": "Finanzas", "3": "Recursos Humanos", "4": "Operaciones", "5": "Sistemas", "CONTRATO": "Arrendamiento" };
-const defaultPerfilesMagicos = [ { regexStr: '^MZ01', desc: 'CPU', marca: 'LENOVO', modelo: 'THINK CENTRE M75s GEN 5', posesion: 'Arrendamiento' }, { regexStr: '^VR00', desc: 'MONITOR', marca: 'LENOVO', modelo: 'S22I-30', posesion: 'Arrendamiento' }, { regexStr: '^8SSD51', desc: 'TECLADO', marca: 'LENOVO', modelo: 'KU1601', posesion: 'Arrendamiento' }, { regexStr: '^8SSM51', desc: 'MOUSE', marca: 'LENOVO', modelo: 'MOJUUO', posesion: 'Arrendamiento' }, { regexStr: '^PF[A-Z0-9]{6}', desc: 'LAPTOP', marca: 'LENOVO', modelo: 'THINKPAD', posesion: 'Arrendamiento' }, { regexStr: '^12240', desc: 'REGULADOR DE VOLTAJE', marca: 'SMARTBITT', modelo: 'SBNB500', posesion: 'Arrendamiento' }, { regexStr: '^22WZ', desc: 'TELÉFONO', marca: 'AVAYA', modelo: 'VANTAGE 12', posesion: 'Cámara' }, { regexStr: '^17WZ[A-Z0-9]{8,}', desc: 'TELÉFONO', marca: 'AVAYA', modelo: '9611G', posesion: 'Cámara' } ];
+const defaultPerfilesMagicos = [ { regexStr: '^MZ01', desc: 'CPU', marca: 'LENOVO', modelo: 'THINK CENTRE M75s GEN 5', posesion: 'Arrendamiento' }, { regexStr: '^VR00', desc: 'MONITOR', marca: 'LENOVO', modelo: 'S22I-30', posesion: 'Arrendamiento' }, { regexStr: '^8SSD51', desc: 'TECLADO', marca: 'LENOVO', modelo: 'KU1601', posesion: 'Arrendamiento' }, { regexStr: '^8SSM51', desc: 'MOUSE', marca: 'LENOVO', modelo: 'MOJUUO', posesion: 'Arrendamiento' }, { regexStr: '^PF[A-Z0-9]{6}', desc: 'LAPTOP', marca: 'LENOVO', modelo: 'THINKPAD', posesion: 'Arrendamiento' }, { regexStr: '^12240', desc: 'NO BREAK', marca: 'SMARTBITT', modelo: 'SBNB500', posesion: 'Arrendamiento' }, { regexStr: '^22WZ', desc: 'TELÉFONO', marca: 'AVAYA', modelo: 'VANTAGE 12', posesion: 'Cámara' }, { regexStr: '^17WZ[A-Z0-9]{8,}', desc: 'TELÉFONO', marca: 'AVAYA', modelo: '9611G', posesion: 'Cámara' } ];
 
 document.addEventListener('DOMContentLoaded', async () => {
     const gate = document.getElementById('workspace-gate');
@@ -1006,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('photo-modal-title').textContent = titleText; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-circle-camera mr-2"></i> Capturar Foto';
         let exists = type==='inventory' ? state.photos[id] : (type==='user' ? (state.userPhotos && state.userPhotos[id]) : (type==='location' ? state.locationPhotos && state.locationPhotos[id] : state.additionalPhotos[id]));
         if(exists)loadPhotoView('item-photo-img',type,id,()=>{document.getElementById('photo-view-container').classList.remove('hidden');photoDownload.hidden=false;const key=photoKey(type,id);photoDownload.textContent=key?'Guardar foto con clave':'Guardar foto';photoHint.hidden=!key;});
-        // Camera starts only when the user chooses it; file selection does not require camera permission.
+        else {document.getElementById('camera-view-container').classList.remove('hidden');document.getElementById('camera-view-container').classList.add('flex');startCamera();}
         document.getElementById('photo-modal').classList.add('show');
     };
 
@@ -1025,12 +1025,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             filterAndRenderInventory();renderAdicionales();renderUsers();showToast('Foto guardada','success');
     }
     async function processPhoto(producer){
-        const controls=['capture-photo-btn','upload-photo-btn','choose-camera-btn','photo-close-btn'].map(id=>document.getElementById(id));controls.forEach(b=>b.disabled=true);
+        const controls=['capture-photo-btn','upload-photo-btn','photo-close-btn'].map(id=>document.getElementById(id));controls.forEach(b=>b.disabled=true);
         try{await savePhotoBlob(await producer());}catch(error){showToast('No se pudo guardar la foto: '+error.message,'error');}finally{controls.forEach(b=>b.disabled=false);document.getElementById('photo-input').value='';}
     }
     document.getElementById('capture-photo-btn').onclick=()=>processPhoto(async()=>{const video=document.getElementById('camera-stream');if(!video.videoWidth)throw Error('Espera a que la cámara muestre la imagen.');const canvas=document.getElementById('photo-canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?.size?resolve(blob):reject(Error('No se pudo capturar.')),'image/jpeg',0.8));});
-    document.getElementById('upload-photo-btn').onclick=()=>{stopCamera();document.getElementById('photo-input').click();};
-    document.getElementById('choose-camera-btn').onclick=()=>{document.getElementById('camera-view-container').classList.remove('hidden');document.getElementById('camera-view-container').classList.add('flex');startCamera();};
+    document.getElementById('upload-photo-btn').onclick=()=>{document.getElementById('photo-input').click();};
     document.getElementById('photo-input').onchange=event=>{const file=event.target.files?.[0];if(!file)return;processPhoto(async()=>{if(file.size>30*1024*1024)throw Error('La imagen excede 30 MB.');const image=new Image(),url=URL.createObjectURL(file);try{image.src=url;await image.decode();const scale=Math.min(1,1600/Math.max(image.naturalWidth,image.naturalHeight)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?.size?resolve(blob):reject(Error('No se pudo abrir la imagen.')),'image/jpeg',0.9));}finally{URL.revokeObjectURL(url);}});};
 
     document.getElementById('delete-photo-btn').onclick = () => { const t = document.getElementById('photo-input').dataset.t; const id = document.getElementById('photo-input').dataset.i; photoDB.db.transaction(['photos'], 'readwrite').objectStore('photos').delete(`${escapeHTML(t)}-${id}`); if(t==='inventory') delete state.photos[id]; else if (t==='user') delete state.userPhotos[id]; else if (t==='location') delete state.locationPhotos[id]; else delete state.additionalPhotos[id]; saveState(); showToast('Foto eliminada'); document.getElementById('photo-modal').classList.remove('show'); if (t === 'location' && document.getElementById('user-detail-view-modal').classList.contains('show')) { const [uid] = id.split('|'); showUserDetail(uid); } filterAndRenderInventory(); renderAdicionales(); renderUsers(); };
@@ -1588,6 +1587,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         recalculateLocationCounts();
         state.resguardantes.forEach(u => { if (!u.locationDetails) u.locationDetails = {}; });
         if (!state.perfilesMagicos?.length) state.perfilesMagicos = defaultPerfilesMagicos;
+        let rentalUpdated=false;for(const item of [...state.additionalItems,...state.perfilesMagicos])if(item.posesion==='Arrendamiento'){const field=Object.hasOwn(item,'desc')?'desc':'descripcion';const text=item[field];if(typeof text==='string'&&/^REGULADOR(?: DE VOLTAJE)?\b/i.test(text)){item[field]=text.replace(/^REGULADOR(?: DE VOLTAJE)?\b/i,'NO BREAK');rentalUpdated=true;}}
+        if(rentalUpdated)await photoDB.setItem('appData','mainState',InventoryData.clean(state));
         if(state.additionalItems.some(i=>i.posesion==='Arrendamiento'&&i.personal!=='Si'&&!i.claveAsignada)){
             InventoryAdditional.renumber(state);
             await photoDB.setItem('appData','mainState',InventoryData.clean(state));
