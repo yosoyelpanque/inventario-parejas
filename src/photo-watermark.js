@@ -48,7 +48,7 @@
 
   // Always derive from the stored original: a changed additional-item key must
   // replace the visible label without stacking watermarks or recompressing it.
-  async function stamp(blob, key) {
+  async function stamp(blob, key, description = '') {
     const label = String(key ?? '').trim().replace(/\s+/g, ' ');
     if (!label) return blob;
     if (!blob || typeof blob.arrayBuffer !== 'function') throw new Error('La fotografía no es válida.');
@@ -70,6 +70,11 @@
       const lineHeight = Math.max(1, Math.round(fontSize * 1.25));
       context.font = `600 ${fontSize}px Arial, sans-serif`;
       const lines = textLines(context, `Clave única: ${label}`, Math.max(1, width - padding * 2));
+      const short = String(description ?? '').trim().replace(/\s+/g, ' ');
+      if (short) {
+        const summary = short.length > 80 ? short.slice(0, 79).trimEnd() + '…' : short;
+        lines.push(...textLines(context, summary, Math.max(1, width - padding * 2)));
+      }
       const bandHeight = Math.min(height, lines.length * lineHeight + padding * 2);
       context.fillStyle = 'rgba(0, 0, 0, 0.64)';
       context.fillRect(0, height - bandHeight, width, bandHeight);
@@ -89,11 +94,11 @@
     }
   }
 
-  async function render(element, blob, key) {
+  async function render(element, blob, key, description) {
     let slot = images.get(element);
     if (!slot) { slot = { request: 0, url: null }; images.set(element, slot); }
     const request = ++slot.request;
-    const result = await stamp(blob, key);
+    const result = await stamp(blob, key, description);
     if (slot.request !== request) return false;
     const url = root.URL.createObjectURL(result);
     const previous = slot.url;

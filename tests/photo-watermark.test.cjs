@@ -106,3 +106,14 @@ test('render evita carreras, revoca URLs reemplazadas y clear cancela renders pe
   assert.equal(element.src, '');
   assert.equal(calls.revoked.length, 2);
 });
+
+test('marca descripción corta junto a clave sin modificar original y limita textos largos', async () => {
+  const { api, calls } = fixture();
+  const original = new Blob(['original']);
+  await api.stamp(original, '001', '  MESA   DE TRABAJO  ');
+  assert.equal(calls.text.map(line => line[0]).join('|'), 'Clave única: 001|MESA DE TRABAJO');
+  assert.equal(await original.text(), 'original');
+  const long = fixture();
+  await long.api.stamp(original, '002', 'A'.repeat(200));
+  assert.equal(long.calls.text.slice(1).map(line => line[0]).join(''), 'A'.repeat(79) + '…');
+});

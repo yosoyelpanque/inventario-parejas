@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const photoDB = window.InventoryStorage;
 
     const photoViewRequests=new WeakMap();
+    function photoDescription(type,id){const item=type==='inventory'?state.inventory.find(i=>i['CLAVE UNICA']===id):type==='additional'?state.additionalItems.find(i=>i.id===id):null;return item?.DESCRIPCION||item?.DESCRripcion||item?.descripcion||'';}
     function photoKey(type,id){return type==='inventory'?String(id):(type==='additional'?state.additionalItems.find(item=>item.id===id)?.claveAsignada||'':'');}
     function clearPhotoView(element){photoViewRequests.set(element,{});InventoryPhotoWatermark.clear(element);}
     async function loadPhotoView(elementId,type,id,onReady){
@@ -84,16 +85,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         try{
             const blob=await photoDB.getItem('photos',type+'-'+id);
             if(!blob||photoViewRequests.get(element)!==request)return;
-            if(await InventoryPhotoWatermark.render(element,blob,photoKey(type,id))&&photoViewRequests.get(element)===request)onReady();
+            if(await InventoryPhotoWatermark.render(element,blob,photoKey(type,id),photoDescription(type,id))&&photoViewRequests.get(element)===request)onReady();
         }catch(error){if(photoViewRequests.get(element)===request)showToast('No se pudo mostrar la fotografía: '+escapeHTML(error.message),'error');}
     }
     const photoDownload=document.createElement('button');photoDownload.id='photo-download';photoDownload.type='button';photoDownload.dataset.action='photo';photoDownload.hidden=true;
-    const photoHint=document.createElement('p');photoHint.id='photo-original-hint';photoHint.hidden=true;photoHint.textContent='La clave aparece en la foto y en su copia guardada. El respaldo conserva el original para poder cambiar la clave sin perder calidad.';
+    const photoHint=document.createElement('p');photoHint.id='photo-original-hint';photoHint.hidden=true;photoHint.textContent='La clave y la descripción corta aparecen en la foto y en su copia guardada. El respaldo conserva el original para poder cambiar la clave sin perder calidad.';
     const photoFooter=document.getElementById('photo-close-btn').parentElement;photoFooter.className='photo-download-actions';photoFooter.prepend(photoHint,photoDownload);
     document.getElementById('nav-bulk-photo-btn').addEventListener('click',()=>{photoDownload.hidden=true;photoHint.hidden=true;clearPhotoView(document.getElementById('item-photo-img'));});
     photoDownload.onclick=async()=>{
         const {t:type,i:id}=document.getElementById('photo-input').dataset;photoDownload.disabled=true;
-        try{const original=await photoDB.getItem('photos',type+'-'+id);if(!original)throw Error('No se encontró la fotografía.');const key=photoKey(type,id),copy=await InventoryPhotoWatermark.stamp(original,key);await InventoryOutput.save(copy,(key||type+'-'+id).replace(/[^a-zA-Z0-9._-]/g,'_')+'.jpg');showToast('Foto guardada'+(key?' con su clave.':'.'),'success');}
+        try{const original=await photoDB.getItem('photos',type+'-'+id);if(!original)throw Error('No se encontró la fotografía.');const key=photoKey(type,id),copy=await InventoryPhotoWatermark.stamp(original,key,photoDescription(type,id));await InventoryOutput.save(copy,(key||type+'-'+id).replace(/[^a-zA-Z0-9._-]/g,'_')+'.jpg');showToast('Foto guardada'+(key?' con su clave.':'.'),'success');}
         catch(error){showToast('No se pudo guardar la foto: '+escapeHTML(error.message),'error');}finally{photoDownload.disabled=false;}
     };
 
@@ -899,7 +900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let retagArchived=false, retagLimit=30, retagSaving=false;
     const retagSelected=new Set();
-    function retagItems(){return InventoryRetag.list(state,retagArchived,document.getElementById('retag-search').value).filter(i=>InventoryExportScope.matches(state,i,document.getElementById('retag-area').value));}
+    function retagItems(){return InventoryRetag.list(state,retagArchived);}
     function populateExportAreas(){for(const id of ['retag-area','export-excel-area']){const select=document.getElementById(id),value=select.value;select.replaceChildren(new Option('Todas las áreas','all'),...InventoryExportScope.areas(state).map(area=>new Option(area+' · '+(state.areaNames?.[area]||''),area)));if([...select.options].some(o=>o.value===value))select.value=value;}}
     function renderRetagList(){
         populateExportAreas();const items=retagItems();for(const key of retagSelected)if(!items.some(i=>i['CLAVE UNICA']===key))retagSelected.delete(key);document.getElementById('retag-selection-count').textContent=retagSelected.size+' de '+items.length+' coincidencias seleccionadas (incluye todas las páginas).';document.getElementById('retag-bulk-archive').textContent=retagArchived?'Volver seleccionados a pendientes':'Archivar seleccionados';document.getElementById('retag-bulk-archive').disabled=!retagSelected.size||retagSaving;
@@ -933,13 +934,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagSelected.clear();retagLimit=30;renderRetagList();};
     document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagSelected.clear();retagLimit=30;renderRetagList();};
-    document.getElementById('retag-search').oninput=()=>{retagLimit=30;renderRetagList();};
-    document.getElementById('retag-area').onchange=()=>{retagLimit=30;renderRetagList();};
     document.getElementById('retag-list').addEventListener('change',e=>{if(!e.target.matches('.retag-select'))return;e.target.checked?retagSelected.add(e.target.dataset.key):retagSelected.delete(e.target.dataset.key);renderRetagList();});
     document.getElementById('retag-select-all').onclick=()=>{retagItems().forEach(i=>retagSelected.add(i['CLAVE UNICA']));renderRetagList();};
     document.getElementById('retag-clear-selection').onclick=()=>{retagSelected.clear();renderRetagList();};
     document.getElementById('retag-bulk-archive').onclick=()=>{const keys=[...retagSelected],reopen=retagArchived;if(!keys.length||retagSaving)return;showConfirm(reopen?'Volver a pendientes':'Confirmar etiquetas colocadas',reopen?'Los bienes seleccionados volverán a pendientes.':`Se archivarán ${keys.length} bienes como etiquetados. Confirma que ya colocaste sus etiquetas.`,async()=>{if(retagSaving)return;retagSaving=true;renderRetagList();try{let next=state;for(const key of keys)next=reopen?InventoryRetag.reopen(next,key):InventoryRetag.complete(next,key,state.currentUser?.name);await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot('Archivar reetiquetado masivo');state=next;retagSelected.clear();filterAndRenderInventory();showToast('Actualizados '+keys.length+' bienes.','success');}catch(e){showToast('No se pudo guardar: '+e.message,'error');}finally{retagSaving=false;renderRetagList();}});};
-    document.getElementById('retag-export').onclick=()=>exportRetag(retagItems(),document.getElementById('retag-area').value);
     document.getElementById('retag-more').onclick=()=>{retagLimit+=30;renderRetagList();};
 
     window.viewArchivedNotes = false;
@@ -1259,7 +1257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const invBlob = await photoDB.getItem('photos', `inventory-${inv['CLAVE UNICA']}`);
                             if(invBlob) {
                                 hasContent = true;
-                                const objectUrl = URL.createObjectURL(await InventoryPhotoWatermark.stamp(invBlob,inv['CLAVE UNICA']));
+                                const objectUrl = URL.createObjectURL(await InventoryPhotoWatermark.stamp(invBlob,inv['CLAVE UNICA'],inv.DESCRIPCION||inv.DESCRripcion));
                                 gridPrintHtml += `<div class="print-photo-card"><div class="print-photo-title">${escapeHTML(inv['CLAVE UNICA'])}</div><img src="${objectUrl}"><div class="print-photo-desc">${escapeHTML((inv.DESCRIPCION||inv.DESCRripcion).substring(0, 45))}...<br><b>Marca:</b> ${escapeHTML(inv.MARCA||'-')} | <b>Serie:</b> ${escapeHTML(inv.SERIE||'-')}</div></div>`;
                                 gridPreviewHtml += `<div class="preview-photo-card"><div class="preview-photo-title text-indigo-700">${escapeHTML(inv['CLAVE UNICA'])}</div><img src="${objectUrl}"><div class="preview-photo-desc font-bold">${escapeHTML((inv.DESCRIPCION||inv.DESCRripcion).substring(0, 45))}...<br><span class="text-gray-500 font-medium"><b>M:</b> ${escapeHTML(inv.MARCA||'-')} | <b>S:</b> ${escapeHTML(inv.SERIE||'-')}</span></div></div>`;
                             }
@@ -1272,7 +1270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const adBlob = await photoDB.getItem('photos', `additional-${ad.id}`);
                             if(adBlob) {
                                 hasContent = true;
-                                const objectUrl = URL.createObjectURL(await InventoryPhotoWatermark.stamp(adBlob,ad.claveAsignada));
+                                const objectUrl = URL.createObjectURL(await InventoryPhotoWatermark.stamp(adBlob,ad.claveAsignada,ad.descripcion));
                                 gridPrintHtml += `<div class="print-photo-card border-yellow-500"><div class="print-photo-title">${escapeHTML(ad.claveAsignada || 'ADICIONAL')}</div><img src="${objectUrl}"><div class="print-photo-desc">${escapeHTML((ad.descripcion).substring(0, 45))}...<br><b>Marca:</b> ${escapeHTML(ad.marca||'-')} | <b>Serie:</b> ${escapeHTML(ad.serie||'-')}</div></div>`;
                                 gridPreviewHtml += `<div class="preview-photo-card border-yellow-400 bg-yellow-50"><div class="preview-photo-title text-yellow-700">${escapeHTML(ad.claveAsignada || 'ADICIONAL')}</div><img src="${objectUrl}"><div class="preview-photo-desc font-bold">${escapeHTML((ad.descripcion).substring(0, 45))}...<br><span class="text-gray-500 font-medium"><b>M:</b> ${escapeHTML(ad.marca||'-')} | <b>S:</b> ${escapeHTML(ad.serie||'-')}</span></div></div>`;
                             }
@@ -1337,7 +1335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     async function exportRetag(items,area){if(!items.length)return showToast('No hay bienes que coincidan con el filtro.','warning');const rows=items.map(i=>({'Clave Única':String(i['CLAVE UNICA']),'Descripción':i.DESCRIPCION||i.DESCRripcion,'Área Original':i.areaOriginal||'','Área del Usuario':InventoryAssignment.owner(state,i)?.area||'','Usuario':i['NOMBRE DE USUARIO'],'Ubicación':i.ubicacionEspecifica,...InventoryTeam.excel(i)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Reetiquetado');try{await InventoryOutput.excel(wb,`Reetiquetado_${area==='all'?'Todas':area}_${new Date().toISOString().slice(0,10)}.xlsx`);showToast('Excel generado','success');}catch(e){showToast(e.message,'error');}}
-    document.getElementById('export-reetiquetado-btn').onclick=()=>{const area=document.getElementById('rep-area-select').value;return exportRetag(state.inventory.filter(i=>i.RE_ETIQUETADO==='SI'&&InventoryExportScope.matches(state,i,area)),area);};
+    document.getElementById('export-reetiquetado-btn').onclick=()=>{const area=document.getElementById('retag-area').value;return exportRetag(state.inventory.filter(i=>i.RE_ETIQUETADO==='SI'&&InventoryExportScope.matches(state,i,area)),area);};
 
     // --- CONCILIADOR TOTAL ---
     let pendingConcilData = null;
