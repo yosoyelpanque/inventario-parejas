@@ -1,7 +1,7 @@
 
 
 const NOMBRES_AREAS = { "131100": "Dirección de Almacén e Inventarios", "131000": "Dirección de Almacén e Inventarios", "1": "Dirección General", "2": "Finanzas", "3": "Recursos Humanos", "4": "Operaciones", "5": "Sistemas", "CONTRATO": "Arrendamiento" };
-const defaultPerfilesMagicos = [ { regexStr: '^MZ01', desc: 'CPU', marca: 'LENOVO', modelo: 'THINK CENTRE M75s GEN 5', posesion: 'Arrendamiento' }, { regexStr: '^VR00', desc: 'MONITOR', marca: 'LENOVO', modelo: 'S22I-30', posesion: 'Arrendamiento' }, { regexStr: '^8SSD51', desc: 'TECLADO', marca: 'LENOVO', modelo: 'KU1601', posesion: 'Arrendamiento' }, { regexStr: '^8SSM51', desc: 'MOUSE', marca: 'LENOVO', modelo: 'MOJUUO', posesion: 'Arrendamiento' }, { regexStr: '^PF[A-Z0-9]{6}', desc: 'LAPTOP', marca: 'LENOVO', modelo: 'THINKPAD', posesion: 'Arrendamiento' }, { regexStr: '^12240', desc: 'NO BREAK', marca: 'SMARTBITT', modelo: 'SBNB500', posesion: 'Arrendamiento' }, { regexStr: '^22WZ', desc: 'TELÉFONO', marca: 'AVAYA', modelo: 'VANTAGE 12', posesion: 'Cámara' }, { regexStr: '^17WZ[A-Z0-9]{8,}', desc: 'TELÉFONO', marca: 'AVAYA', modelo: '9611G', posesion: 'Cámara' } ];
+const defaultPerfilesMagicos = [ { regexStr: '^MZ01', desc: 'CPU', marca: 'LENOVO', modelo: 'THINK CENTRE M75s GEN 5', posesion: 'Arrendamiento' }, { regexStr: '^VR00', desc: 'MONITOR', marca: 'LENOVO', modelo: 'S22I-30', posesion: 'Arrendamiento' }, { regexStr: '^8SSD51', desc: 'TECLADO', marca: 'LENOVO', modelo: 'KU1601', posesion: 'Arrendamiento' }, { regexStr: '^8SSM51', desc: 'MOUSE', marca: 'LENOVO', modelo: 'MOJUUO', posesion: 'Arrendamiento' }, { regexStr: '^PF[A-Z0-9]{6}', desc: 'LAPTOP', marca: 'LENOVO', modelo: '21M4S3R900', posesion: 'Arrendamiento' }, { regexStr: '^12240', desc: 'NO BREAK', marca: 'SMARTBITT', modelo: 'SBNB500', posesion: 'Arrendamiento' }, { regexStr: '^22WZ', desc: 'TELÉFONO', marca: 'AVAYA', modelo: 'VANTAGE 12', posesion: 'Cámara' }, { regexStr: '^17WZ[A-Z0-9]{8,}', desc: 'TELÉFONO', marca: 'AVAYA', modelo: '9611G', posesion: 'Cámara' } ];
 
 document.addEventListener('DOMContentLoaded', async () => {
     const gate = document.getElementById('workspace-gate');
@@ -1585,6 +1585,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         state.resguardantes.forEach(u => { if (!u.locationDetails) u.locationDetails = {}; });
         if (!state.perfilesMagicos?.length) state.perfilesMagicos = defaultPerfilesMagicos;
         let rentalUpdated=false;for(const item of [...state.additionalItems,...state.perfilesMagicos])if(item.posesion==='Arrendamiento'){const field=Object.hasOwn(item,'desc')?'desc':'descripcion';const text=item[field];if(typeof text==='string'&&/^REGULADOR(?: DE VOLTAJE)?\b/i.test(text)){item[field]=text.replace(/^REGULADOR(?: DE VOLTAJE)?\b/i,'NO BREAK');rentalUpdated=true;}}
+        for(const item of [...state.additionalItems,...state.perfilesMagicos])if(item.posesion==='Arrendamiento'&&/^LAPTOP\b/i.test(String(item.descripcion||item.desc||'').trim())&&item.modelo!=='21M4S3R900'){item.modelo='21M4S3R900';rentalUpdated=true;}
         if(rentalUpdated)await photoDB.setItem('appData','mainState',InventoryData.clean(state));
         if(state.additionalItems.some(i=>i.posesion==='Arrendamiento'&&i.personal!=='Si'&&!i.claveAsignada)){
             InventoryAdditional.renumber(state);
