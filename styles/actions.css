@@ -133,3 +133,7 @@ html body #export-excel-btn{background-color:rgb(5, 150, 105)!important;color:rg
 html body #clear-session-btn{background-color:rgb(220, 38, 38)!important;color:rgb(255, 255, 255)!important;border-color:rgb(252, 165, 165)!important;background-image:none!important}
 html body #add-magic-btn{background-color:rgb(79, 70, 229)!important;color:rgb(255, 255, 255)!important;border-color:rgb(229, 231, 235)!important;background-image:none!important}
 }
+
+.section-tabs{display:flex;gap:.5rem;border-bottom:2px solid #e5e7eb;margin-bottom:1rem}
+html body .section-tabs button[data-action]{background:transparent!important;background-image:none!important;border:0;border-bottom:3px solid transparent!important;border-radius:0;padding:.75rem 1rem;color:#6b7280!important;box-shadow:none!important;font-weight:700}
+html body .section-tabs button[data-action][aria-pressed="true"]{color:#4338ca!important;border-bottom-color:#6366f1!important}
