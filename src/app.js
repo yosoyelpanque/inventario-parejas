@@ -490,9 +490,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('create-user-btn').onclick = () => {
         const n = document.getElementById('user-name').value.trim();
         const a = document.getElementById('user-area-select').value;
+        if(InventorySafeChanges.findName(state,n))return showToast('Este usuario ya está registrado. Edita su perfil para agregar ubicaciones.','warning');
         if(!n || !a || !tempUserLocations.length) return showToast('Completa nombre, área y al menos una ubicación','error');
 
         const proceedCreate = () => {
+            if(InventorySafeChanges.findName(state,n))return showToast('Este usuario ya está registrado.','warning');
             saveSnapshot();
             const u = { id: generateUUID(), name: n, area: a, locationWithId: tempUserLocations[0], locations: [...tempUserLocations], locationDetails: {...tempUserLocationDetails} };
             state.resguardantes.push(u); state.activeResguardante = u; recalculateLocationCounts(); state.suggestedNames = [...new Set([...(state.suggestedNames||[]), n])];
@@ -500,12 +502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('user-name').value=''; document.getElementById('user-edificio-select').value = lastSelectedEdificio; document.getElementById('user-piso-select').value = lastSelectedPiso; document.getElementById('user-edificio-manual').classList.toggle('hidden', lastSelectedEdificio !== 'OTRO MANUAL'); document.getElementById('user-piso-manual').classList.toggle('hidden', lastSelectedPiso !== 'OTRO MANUAL'); tempUserLocations=[]; tempUserLocationDetails={}; renderLocChips(document.getElementById('new-user-locations-list'), [], {}); showToast(`Usuario ${escapeHTML(n)} creado.`); focusSearch();
         };
 
-        const existingUser = state.resguardantes.find(u => u.name.toLowerCase() === n.toLowerCase());
-        if (existingUser) {
-            showConfirm('Usuario Duplicado', `El usuario "${escapeHTML(n)}" ya está registrado en el área ${existingUser.area}. ¿Deseas registrar otro usuario con el mismo nombre?`, proceedCreate);
-        } else {
-            proceedCreate();
-        }
+        proceedCreate();
     };
 
     function renderUsers() {
