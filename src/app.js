@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (tab === 'adicionales') { globalSearch.placeholder = 'Buscar adicional...'; globalSearch.disabled = false; invActions.classList.add('hidden'); }
         else if (tab === 'notas') { globalSearch.placeholder = 'Nota, clave o descripción...'; globalSearch.disabled = false; window.currentNotesPage=1; invActions.classList.add('hidden'); renderNotasTab(); }
         else if (tab === 'reportes') { globalSearch.placeholder = 'Reporte, área o resguardante...'; globalSearch.disabled = false; invActions.classList.add('hidden'); populateReportFilters();populateReviewAreas();renderReportSearch(); }
-        else if (tab === 'settings') { globalSearch.placeholder = 'No disponible aquí'; globalSearch.disabled = true; invActions.classList.add('hidden'); renderResponsablesSettings(); renderLoadedListings(); renderRecoveryPoints(); renderMagicProfiles();renderSessionHistory(); }
+        else if (tab === 'settings') { populateExportAreas(); globalSearch.placeholder = 'No disponible aquí'; globalSearch.disabled = true; invActions.classList.add('hidden'); renderResponsablesSettings(); renderLoadedListings(); renderRecoveryPoints(); renderMagicProfiles();renderSessionHistory(); }
         const activeNav=document.querySelector('.tab-btn.active'),nav=document.getElementById('tabs-container');
         if(activeNav && nav.scrollWidth>nav.clientWidth)nav.scrollLeft=activeNav.offsetLeft-nav.offsetLeft-12;
         updateBanner(); if(tab==='inventory') filterAndRenderInventory(); if(tab==='users') {renderUsers();populateTransferUsers();} if(tab==='adicionales') { populateFilters(); renderAdicionales(); toggleAdicFormFields('ad'); document.getElementById('ad-serie').focus(); } else focusSearch();
@@ -892,8 +892,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     let retagArchived=false, retagLimit=30, retagSaving=false;
+    const retagSelected=new Set();
+    function retagItems(){return InventoryRetag.list(state,retagArchived,document.getElementById('retag-search').value).filter(i=>InventoryExportScope.matches(state,i,document.getElementById('retag-area').value));}
+    function populateExportAreas(){for(const id of ['retag-area','export-excel-area']){const select=document.getElementById(id),value=select.value;select.replaceChildren(new Option('Todas las áreas','all'),...InventoryExportScope.areas(state).map(area=>new Option(area+' · '+(state.areaNames?.[area]||''),area)));if([...select.options].some(o=>o.value===value))select.value=value;}}
     function renderRetagList(){
-        const items=InventoryRetag.list(state,retagArchived,document.getElementById('retag-search').value);
+        populateExportAreas();const items=retagItems();for(const key of retagSelected)if(!items.some(i=>i['CLAVE UNICA']===key))retagSelected.delete(key);document.getElementById('retag-selection-count').textContent=retagSelected.size+' de '+items.length+' coincidencias seleccionadas (incluye todas las páginas).';document.getElementById('retag-bulk-archive').textContent=retagArchived?'Volver seleccionados a pendientes':'Archivar seleccionados';document.getElementById('retag-bulk-archive').disabled=!retagSelected.size||retagSaving;
         document.getElementById('retag-pending').setAttribute('aria-pressed',String(!retagArchived));
         document.getElementById('retag-done').setAttribute('aria-pressed',String(retagArchived));
         document.getElementById('retag-count').textContent=items.length+' bienes '+(retagArchived?'etiquetados':'pendientes de reetiquetar');
@@ -902,7 +905,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const row=document.createElement('article'),info=document.createElement('div'),title=document.createElement('strong'),detail=document.createElement('p'),actions=document.createElement('div'),open=document.createElement('button'),done=document.createElement('button');
             const key=item['CLAVE UNICA'];title.textContent=key+' · '+(item.DESCRIPCION||item.DESCRripcion||'Sin descripción');
             detail.textContent=(item['NOMBRE DE USUARIO']||'Sin asignar')+' · '+(item.ubicacionEspecifica||'Sin ubicación')+' · Serie: '+(item.SERIE||'Sin serie');
-            info.append(title,detail);
+            const check=document.createElement('input');check.type='checkbox';check.className='retag-select';check.dataset.key=key;check.checked=retagSelected.has(key);check.disabled=retagSaving;check.setAttribute('aria-label','Seleccionar bien '+key);const label=document.createElement('label');label.append(check,title);info.append(label,detail);
             if(retagArchived){const stamp=document.createElement('p');stamp.textContent='Etiquetado: '+new Date(item.etiquetadoCompletado.at).toLocaleString('es-MX')+' · '+item.etiquetadoCompletado.por;info.append(stamp);}
             actions.className='retag-actions';open.type=done.type='button';open.dataset.action='info';open.textContent='Ver bien';open.onclick=()=>showInvDetail(key);
             done.dataset.action=retagArchived?'edit':'save';done.textContent=retagArchived?'Volver a pendientes':'Ya etiquetado · Archivar';done.disabled=retagSaving;
@@ -922,9 +925,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!items.length){const empty=document.createElement('p');empty.textContent='No hay bienes que coincidan en esta lista.';list.append(empty);}
         document.getElementById('retag-more').hidden=items.length<=retagLimit;
     }
-    document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagLimit=30;renderRetagList();};
-    document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagLimit=30;renderRetagList();};
+    document.getElementById('retag-pending').onclick=()=>{retagArchived=false;retagSelected.clear();retagLimit=30;renderRetagList();};
+    document.getElementById('retag-done').onclick=()=>{retagArchived=true;retagSelected.clear();retagLimit=30;renderRetagList();};
     document.getElementById('retag-search').oninput=()=>{retagLimit=30;renderRetagList();};
+    document.getElementById('retag-area').onchange=()=>{retagLimit=30;renderRetagList();};
+    document.getElementById('retag-list').addEventListener('change',e=>{if(!e.target.matches('.retag-select'))return;e.target.checked?retagSelected.add(e.target.dataset.key):retagSelected.delete(e.target.dataset.key);renderRetagList();});
+    document.getElementById('retag-select-all').onclick=()=>{retagItems().forEach(i=>retagSelected.add(i['CLAVE UNICA']));renderRetagList();};
+    document.getElementById('retag-clear-selection').onclick=()=>{retagSelected.clear();renderRetagList();};
+    document.getElementById('retag-bulk-archive').onclick=()=>{const keys=[...retagSelected],reopen=retagArchived;if(!keys.length||retagSaving)return;showConfirm(reopen?'Volver a pendientes':'Confirmar etiquetas colocadas',reopen?'Los bienes seleccionados volverán a pendientes.':`Se archivarán ${keys.length} bienes como etiquetados. Confirma que ya colocaste sus etiquetas.`,async()=>{if(retagSaving)return;retagSaving=true;renderRetagList();try{let next=state;for(const key of keys)next=reopen?InventoryRetag.reopen(next,key):InventoryRetag.complete(next,key,state.currentUser?.name);await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot('Archivar reetiquetado masivo');state=next;retagSelected.clear();filterAndRenderInventory();showToast('Actualizados '+keys.length+' bienes.','success');}catch(e){showToast('No se pudo guardar: '+e.message,'error');}finally{retagSaving=false;renderRetagList();}});};
+    document.getElementById('retag-export').onclick=()=>exportRetag(retagItems(),document.getElementById('retag-area').value);
     document.getElementById('retag-more').onclick=()=>{retagLimit+=30;renderRetagList();};
 
     window.viewArchivedNotes = false;
@@ -1315,7 +1324,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     };
 
-    document.getElementById('export-reetiquetado-btn').onclick = async () => { const items = state.inventory.filter(i => i.RE_ETIQUETADO === 'SI'); if(items.length === 0) return showToast('No hay bienes para reetiquetar', 'warning'); const rows = items.map(i => ({ 'Clave Única': String(i['CLAVE UNICA']), 'Descripción': i.DESCRIPCION || i.DESCRripcion, 'Usuario': i['NOMBRE DE USUARIO'], 'Ubicación': i.ubicacionEspecifica, ...InventoryTeam.excel(i) })); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Reetiquetado"); try { await InventoryOutput.excel(wb, `Reetiquetado_${new Date().toISOString().slice(0,10)}.xlsx`); showToast('Excel generado', 'success'); } catch(error) { showToast(error.message,'error'); } };
+    async function exportRetag(items,area){if(!items.length)return showToast('No hay bienes que coincidan con el filtro.','warning');const rows=items.map(i=>({'Clave Única':String(i['CLAVE UNICA']),'Descripción':i.DESCRIPCION||i.DESCRripcion,'Área Original':i.areaOriginal||'','Área del Usuario':InventoryAssignment.owner(state,i)?.area||'','Usuario':i['NOMBRE DE USUARIO'],'Ubicación':i.ubicacionEspecifica,...InventoryTeam.excel(i)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Reetiquetado');try{await InventoryOutput.excel(wb,`Reetiquetado_${area==='all'?'Todas':area}_${new Date().toISOString().slice(0,10)}.xlsx`);showToast('Excel generado','success');}catch(e){showToast(e.message,'error');}}
+    document.getElementById('export-reetiquetado-btn').onclick=()=>{const area=document.getElementById('rep-area-select').value;return exportRetag(state.inventory.filter(i=>i.RE_ETIQUETADO==='SI'&&InventoryExportScope.matches(state,i,area)),area);};
 
     // --- CONCILIADOR TOTAL ---
     let pendingConcilData = null;
@@ -1433,12 +1443,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('export-excel-btn').onclick = () => {
         document.getElementById('loading-overlay').classList.add('show'); document.getElementById('loading-text').textContent = "Generando Excel...";
+        const exportArea=document.getElementById('export-excel-area').value;const exportData=InventoryExportScope.scope(state,exportArea);if(!exportData.inventory.length&&!exportData.additionalItems.length){document.getElementById('loading-overlay').classList.remove('show');return showToast('No hay bienes en el área seleccionada.','warning');}
         setTimeout(async () => {
             try {
                 const getLoc = (i) => { const u = state.resguardantes.find(r => r.name === (i['NOMBRE DE USUARIO'] || i.usuario)); return (u && u.locationDetails && u.locationDetails[i.ubicacionEspecifica]) ? u.locationDetails[i.ubicacionEspecifica] : { edificio: 'N/A', piso: 'N/A' }; };
                 const mapRow = (i) => { const loc = getLoc(i); const isAdic = i._type === 'adic'; const c = isAdic ? i.claveAsignada : i['CLAVE UNICA']; return { 'Clave Única': c || '', 'Descripción': i.DESCRripcion || i.DESCRIPCION || i.descripcion || '', 'Marca': i.MARCA || i.marca || '', 'Modelo': i.MODELO || i.modelo || '', 'Serie': i.SERIE || i.serie || '', 'Área Original': i.areaOriginal || i.areaProcedencia || '', 'Área del Usuario': InventoryAssignment.owner(state,i)?.area || '', 'Usuario Asignado': i['NOMBRE DE USUARIO'] || i.usuario || '', 'Ubicación': i.ubicacionEspecifica || '', 'Edificio': loc.edificio || '', 'Piso': loc.piso || '', ...InventoryTeam.excel(i), 'Requiere Etiqueta': isAdic ? 'N/A' : (i.RE_ETIQUETADO === 'SI' ? 'SÍ' : 'NO'), 'Tiene Foto': (isAdic ? state.additionalPhotos[i.id] : state.photos[c]) ? 'SÍ' : 'NO', 'Nota': state.notes[c] || '' }; };
-                const invRows = state.inventory.map(i => { return mapRow({...i,_type:'inv'}); }); const adicCamara = state.additionalItems.filter(i => i.posesion === 'Cámara' && i.personal !== 'Si').map(i => { return mapRow({...i,_type:'adic'}); }); const adicArrend = state.additionalItems.filter(i => i.posesion === 'Arrendamiento').map(i => { return mapRow({...i,_type:'adic'}); }); const adicPers = state.additionalItems.filter(i => i.personal === 'Si').map(i => { return mapRow({...i,_type:'adic'}); });
-                const adicGrupo=state.additionalItems.filter(i=>(i.tipoBien==='group'||i.posesion==='Propiedad del Grupo')).map(i=>mapRow({...i,_type:'adic'}));const wb = XLSX.utils.book_new();if(adicGrupo.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(adicGrupo),'Grupos Parlamentarios'); if(invRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invRows), "Bienes Inventario"); if(adicCamara.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicCamara), "Adicionales Cámara"); if(adicArrend.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicArrend), "Adic. Arrendamiento"); if(adicPers.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicPers), "Bienes Personales"); await InventoryOutput.excel(wb, `Inventario_Completo_${new Date().toISOString().slice(0,10)}.xlsx`); showToast('Exportado con éxito', 'success');
+                const invRows = exportData.inventory.map(i => { return mapRow({...i,_type:'inv'}); }); const adicCamara = exportData.additionalItems.filter(i => i.posesion === 'Cámara' && i.personal !== 'Si').map(i => { return mapRow({...i,_type:'adic'}); }); const adicArrend = exportData.additionalItems.filter(i => i.posesion === 'Arrendamiento').map(i => { return mapRow({...i,_type:'adic'}); }); const adicPers = exportData.additionalItems.filter(i => i.personal === 'Si').map(i => { return mapRow({...i,_type:'adic'}); });
+                const adicGrupo=exportData.additionalItems.filter(i=>(i.tipoBien==='group'||i.posesion==='Propiedad del Grupo')).map(i=>mapRow({...i,_type:'adic'}));const wb = XLSX.utils.book_new();if(adicGrupo.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(adicGrupo),'Grupos Parlamentarios'); if(invRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invRows), "Bienes Inventario"); if(adicCamara.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicCamara), "Adicionales Cámara"); if(adicArrend.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicArrend), "Adic. Arrendamiento"); if(adicPers.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicPers), "Bienes Personales"); await InventoryOutput.excel(wb, `Inventario_${exportArea==='all'?'Completo':exportArea}_${new Date().toISOString().slice(0,10)}.xlsx`); showToast('Exportado con éxito', 'success');
             } catch (error) { showToast('Error al exportar Excel', 'error'); } finally { document.getElementById('loading-overlay').classList.remove('show'); }
         }, 150);
     };
