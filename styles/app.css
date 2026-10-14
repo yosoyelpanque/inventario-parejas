@@ -275,7 +275,6 @@
 .capture-panel #capture-draft-status:empty{display:none}
 .capture-panel #create-user-btn,.capture-panel #add-adicional-btn{position:sticky;bottom:0;z-index:3;min-height:44px;padding:10px;box-shadow:0 -6px 0 4px white}
 @media(min-width:1024px){
- #users-tab>#transfer-panel{margin-bottom:8px}
  #users-tab>.flex,#adicionales-tab>.flex{gap:16px}
  #main-content-area:has(#users-tab.active),#main-content-area:has(#adicionales-tab.active){padding-top:10px}
  .capture-panel{align-self:start;max-height:calc(100dvh - var(--capture-header-height,210px) - 30px);overflow:auto;scrollbar-gutter:stable}
@@ -283,9 +282,9 @@
  .capture-panel #add-location-btn{padding:8px;min-height:40px}
 }
 
-@media(min-width:1024px){#users-tab .capture-panel{max-height:calc(100dvh - var(--capture-header-height,210px) - 112px)}}
 
-@media(max-width:1023px){.capture-panel{max-height:calc(100dvh - var(--capture-header-height,210px) - 30px);overflow:auto}.capture-panel .mobile-collapse-content{display:block}#users-tab .capture-panel{max-height:calc(100dvh - var(--capture-header-height,210px) - 112px)}}
+
+@media(max-width:1023px){.capture-panel{max-height:calc(100dvh - var(--capture-header-height,210px) - 30px);overflow:auto}.capture-panel .mobile-collapse-content{display:block}}
 .capture-panel{display:flex;flex-direction:column;overflow:hidden!important}
 .capture-panel>.mobile-collapsible{min-height:0;overflow:auto;flex:1;scrollbar-gutter:stable}
 .capture-panel .capture-submit-footer{flex:none;padding-top:10px;background:white}
@@ -313,3 +312,10 @@
 #register-user-content #user-location-select{margin-top:2px}
 .capture-panel #new-user-locations-list{max-height:52px}
 .capture-panel #new-user-locations-list>div{padding:4px}
+
+.user-registration-column{min-width:0;display:flex;flex-direction:column;gap:8px}
+#users-tab .capture-panel{width:100%;max-height:calc(100dvh - var(--capture-header-height,210px) - 20px)}
+#users-tab #transfer-panel{margin:0}
+#main-content-area:has(#users-tab.active){margin-top:4px;padding-top:4px;padding-bottom:12px}
+body:has(#users-tab.active) .sticky-header{padding-bottom:0}
+#users-tab .capture-panel #new-user-locations-list{max-height:100px}

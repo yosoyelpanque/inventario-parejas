@@ -227,9 +227,9 @@
 
             <div id="main-content-area" class="p-4 md:p-6 rounded-b-2xl rounded-tr-2xl shadow-xl glass-effect border border-t-0 border-gray-300">
 
-                <div id="users-tab" class="tab-content active"><details class="area-review" id="transfer-panel"><summary>Transferir ubicaciones entre resguardantes</summary><p>Transfiere una ubicación junto con sus bienes, infraestructura y fotografía. El área original de los bienes se conserva.</p><div class="review-controls"><label>Usuario de origen<select id="transfer-from"></select></label><label>Ubicación<select id="transfer-location"></select></label><label>Usuario de destino<select id="transfer-to"></select></label></div><label>Nombre de la ubicación en destino<input id="transfer-name" class="w-full border p-2 rounded-lg" placeholder="Se conserva el nombre original"></label><p id="transfer-summary" role="status"></p><button data-action="edit" id="transfer-submit" type="button">Revisar y transferir</button></details>
+                <div id="users-tab" class="tab-content active">
                     <div class="flex flex-col lg:flex-row gap-6">
-                        <div class="capture-panel lg:w-2/5 p-4 md:p-5 border-2 rounded-xl bg-white shadow-sm">
+                        <div class="user-registration-column lg:w-2/5"><div class="capture-panel p-4 md:p-5 border-2 rounded-xl bg-white shadow-sm">
                             <h3 class="font-extrabold text-xl mb-4 text-indigo-900 border-b pb-2">Registrar Usuario</h3>
                             <div class="space-y-4">
                                 <div><label class="font-bold text-gray-600 mb-1 block text-sm">Nombre Completo</label><input type="text" id="user-name" list="lista-responsables" class="w-full border p-2.5 rounded-lg text-lg outline-none focus:border-indigo-500"></div>
@@ -252,6 +252,7 @@
                                 <button data-action="save" id="create-user-btn" class="w-full py-4 mt-2 rounded-xl font-bold text-lg shadow-md transition-colors"><i class="fa-solid fa-user-plus mr-1"></i>Crear usuario</button>
                             </div>
                         </div>
+                        <details class="area-review" id="transfer-panel"><summary>Transferir ubicaciones entre resguardantes</summary><p>Transfiere una ubicación junto con sus bienes, infraestructura y fotografía. El área original de los bienes se conserva.</p><div class="review-controls"><label>Usuario de origen<select id="transfer-from"></select></label><label>Ubicación<select id="transfer-location"></select></label><label>Usuario de destino<select id="transfer-to"></select></label></div><label>Nombre de la ubicación en destino<input id="transfer-name" class="w-full border p-2 rounded-lg" placeholder="Se conserva el nombre original"></label><p id="transfer-summary" role="status"></p><button data-action="edit" id="transfer-submit" type="button">Revisar y transferir</button></details></div>
                         <div class="lg:w-3/5 p-4 md:p-5 border-2 rounded-xl bg-white shadow-sm flex flex-col">
                             <div class="flex justify-between items-center mb-4 border-b pb-2"><h3 class="font-extrabold text-xl text-indigo-900">Directorio</h3><span id="user-count-badge" class="px-3 py-0.5 bg-indigo-100 text-indigo-800 rounded-full font-bold text-sm"></span></div>
                             <div id="registered-users-list" class="space-y-3 flex-grow overflow-y-auto pr-2" style="max-height: 600px;"></div>
