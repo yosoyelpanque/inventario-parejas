@@ -9,10 +9,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   summary.addEventListener('click',event=>{event.preventDefault();if(mobile.matches){collapsed=details.open;render();}});
   mobile.addEventListener('change',render);render();
  }
+ const captureHeader=document.querySelector('.sticky-header');new ResizeObserver(()=>document.documentElement.style.setProperty('--capture-header-height',captureHeader.getBoundingClientRect().height+'px')).observe(captureHeader);
  const users=$('user-name').closest('.space-y-4'),userPanel=users.parentElement;
  collapsible(userPanel,userPanel.querySelector('h3'),[users],'register-user');
  const form=$('adicional-form'),panel=form.parentElement;
  collapsible(panel,panel.querySelector('h3'),[...panel.children].filter(n=>n.tagName!=='H3'),'register-additional');
+ for(const [container,id] of [[userPanel,'create-user-btn'],[panel,'add-adicional-btn']]){const footer=document.createElement('div');footer.className='capture-submit-footer';footer.append($(id));container.append(footer);}
  const filters=document.querySelector('.inventory-filters'),controls=filters.parentElement,heading=controls.querySelector('h3');
  // Insert before action buttons, preserving their visibility when filters are collapsed.
  collapsible(controls,heading,[controls.querySelector('.inventory-history'),filters],'inventory-filters',true);

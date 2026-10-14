@@ -23,3 +23,14 @@ test('sugerencias eliminadas persisten al serializar y restaurar el ZIP',async()
  assert.deepEqual(restored.notes,state.notes);assert.deepEqual(restored.archivedNotes,state.archivedNotes);
  assert.deepEqual(suggestions.list(restored),['REVISAR SERIE','Ya revisado']);
 });
+
+test('sugerencias por tipo usan el bien de origen, incluyendo archivadas y notas masivas',()=>{
+ const state={inventory:[{'CLAVE UNICA':'s',DESCRIPCION:'SILLA SECRETARIAL'},{'CLAVE UNICA':'l',DESCRIPCION:'LIBRERO DE MADERA'}],notes:{s:'REVISAR RESPALDO',l:'TIENE DOS ENTREPAÑOS'},archivedNotes:{old:'SILLA CON BRAZOS'},additionalItems:[]};
+ assert.deepEqual(suggestions.list(state,'',['SILLAS']),['REVISAR RESPALDO','SILLA CON BRAZOS']);
+ assert.deepEqual(suggestions.list(state,'',['LIBRERO']),['TIENE DOS ENTREPAÑOS']);
+ assert.equal(suggestions.list(state,'',['SILLA','LIBRERO']).length,3);
+ assert.equal(suggestions.list(state,'',[]).length,0);
+ const templates=suggestions.templates(state,'',['SILLA SECRETARIAL']);
+ assert.ok(templates.length>0);assert.ok(templates.every(t=>suggestions.kind(t.label)==='silla'));
+ assert.equal(suggestions.templates(state,'',['TIPO DESCONOCIDO']).length,0);
+});

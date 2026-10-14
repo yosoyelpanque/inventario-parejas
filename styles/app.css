@@ -257,3 +257,59 @@
 .team-card #team-back,.team-card #team-solo{background:transparent;color:#03564B;padding:6px 0;font-size:13px;text-align:left;width:fit-content}.team-card #team-back{margin-bottom:12px}.team-card #team-back[hidden],.team-swap[hidden]{display:none}
 
 .inventory-empty-message { max-width:calc(100vw - 96px); white-space:normal; text-align:left; }
+
+/* Compact registration panels keep the primary action available. */
+.capture-panel{padding:12px!important}
+.capture-panel .mobile-collapsible>summary{margin-bottom:8px!important}
+.capture-panel h3{font-size:18px!important}
+.capture-panel .space-y-4>*+*{margin-top:8px!important}
+.capture-panel input:not([type=checkbox]):not([type=radio]),.capture-panel select{min-height:40px!important;padding:8px 10px!important;font-size:16px!important}
+.capture-panel label{margin-bottom:3px!important;font-size:13px!important}
+.capture-panel #adicional-form{gap:8px}
+.capture-panel .additional-serial{padding:10px}
+.capture-panel .additional-serial p{margin-top:4px;font-size:12px}
+.capture-panel .additional-help{margin:0;font-size:12px}
+.capture-panel #new-user-locations-list{min-height:0;padding:6px;max-height:90px}
+.capture-panel #new-user-locations-list p{padding:4px}
+.capture-panel #discard-capture-draft{padding:5px 8px;font-size:12px;margin-bottom:8px}
+.capture-panel #capture-draft-status:empty{display:none}
+.capture-panel #create-user-btn,.capture-panel #add-adicional-btn{position:sticky;bottom:0;z-index:3;min-height:44px;padding:10px;box-shadow:0 -6px 0 4px white}
+@media(min-width:1024px){
+ #users-tab>#transfer-panel{margin-bottom:8px}
+ #users-tab>.flex,#adicionales-tab>.flex{gap:16px}
+ #main-content-area:has(#users-tab.active),#main-content-area:has(#adicionales-tab.active){padding-top:10px}
+ .capture-panel{align-self:start;max-height:calc(100dvh - var(--capture-header-height,210px) - 30px);overflow:auto;scrollbar-gutter:stable}
+ .capture-panel .mobile-collapse-content{display:block}
+ .capture-panel #add-location-btn{padding:8px;min-height:40px}
+}
+
+@media(min-width:1024px){#users-tab .capture-panel{max-height:calc(100dvh - var(--capture-header-height,210px) - 112px)}}
+
+@media(max-width:1023px){.capture-panel{max-height:calc(100dvh - var(--capture-header-height,210px) - 30px);overflow:auto}.capture-panel .mobile-collapse-content{display:block}#users-tab .capture-panel{max-height:calc(100dvh - var(--capture-header-height,210px) - 112px)}}
+.capture-panel{display:flex;flex-direction:column;overflow:hidden!important}
+.capture-panel>.mobile-collapsible{min-height:0;overflow:auto;flex:1;scrollbar-gutter:stable}
+.capture-panel .capture-submit-footer{flex:none;padding-top:10px;background:white}
+.capture-panel #create-user-btn,.capture-panel #add-adicional-btn{position:static;box-shadow:none;width:100%;margin:0}
+.capture-panel #capture-draft-status{font-size:12px;line-height:1.4;margin:4px 0}
+@media(max-width:600px){.capture-panel:has(>.mobile-collapsible:not([open]))>.capture-submit-footer{display:none}}
+@media(min-width:1024px){
+ .capture-panel #adicional-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"serial serial" "warning warning" "key type" "hint hint" "origin origin" "description description" "specs specs"}
+ .capture-panel .additional-serial{grid-area:serial}
+ .capture-panel #serie-warning{grid-area:warning}
+ .capture-panel .additional-key{grid-area:key}
+ .capture-panel .additional-type{grid-area:type}
+ .capture-panel #ad-clave-hint{grid-area:hint}
+ .capture-panel .additional-origin{grid-area:origin}
+ .capture-panel .additional-description{grid-area:description}
+ .capture-panel .additional-grid{grid-area:specs}
+}
+
+.capture-panel label{line-height:18px}
+.capture-panel input:not([type=checkbox]):not([type=radio]),.capture-panel select{height:40px;line-height:20px!important}
+.capture-panel .additional-notice{padding:6px;font-size:12px;line-height:1.4}
+.capture-panel .additional-notice p{margin:0}
+#register-user-content>.space-y-4>*+*{margin-top:6px!important}
+#register-user-content .bg-gray-50{padding:8px}
+#register-user-content #user-location-select{margin-top:2px}
+.capture-panel #new-user-locations-list{max-height:52px}
+.capture-panel #new-user-locations-list>div{padding:4px}
