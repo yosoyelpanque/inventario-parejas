@@ -151,33 +151,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function populateTransferUsers(){
         for(const id of ['transfer-from','transfer-to']){const select=document.getElementById(id),old=select.value;select.replaceChildren(new Option('Selecciona un usuario',''),...state.resguardantes.map(u=>new Option(u.name+' · Área '+u.area,u.id)));if(state.resguardantes.some(u=>u.id===old))select.value=old;}
-        updateTransferLocations();
+        updateTransferLocations();updateTransferTargets();
     }
     function updateTransferLocations(){
         const user=state.resguardantes.find(u=>u.id===document.getElementById('transfer-from').value),select=document.getElementById('transfer-location');
         select.replaceChildren(new Option('Selecciona una ubicación',''),...(user?.locations||[]).map(l=>new Option(l,l)));document.getElementById('transfer-name').value='';updateTransferSummary();
     }
-    function getTransfer(){return InventoryOperations.transfer(state,document.getElementById('transfer-from').value,document.getElementById('transfer-to').value,document.getElementById('transfer-location').value,document.getElementById('transfer-name').value);}
+    function updateTransferTargets(){
+        const user=state.resguardantes.find(u=>u.id===document.getElementById('transfer-to').value),select=document.getElementById('transfer-target-location');
+        select.replaceChildren(new Option('Crear ubicación / conservar nombre de origen','__new__'),...(user?.locations||[]).map(l=>new Option(l,l)));select.disabled=!user;document.getElementById('transfer-new-location-label').hidden=false;document.getElementById('transfer-name').value='';updateTransferSummary();
+    }
+    function getTransfer(){const selected=document.getElementById('transfer-target-location').value,existing=selected!=='__new__';return InventoryOperations.transfer(state,document.getElementById('transfer-from').value,document.getElementById('transfer-to').value,document.getElementById('transfer-location').value,existing?selected:document.getElementById('transfer-name').value,existing);}
+
     function updateTransferSummary(){
         const box=document.getElementById('transfer-summary');
-        try{const plan=getTransfer();box.textContent=(plan.crossArea?'ATENCIÓN: usuarios de distintas áreas ('+plan.from.area+' → '+plan.to.area+'). ':'')+plan.inventoryCount+' bienes de inventario y '+plan.additionalCount+' adicionales pasarán a '+plan.to.name+'.';box.style.color=plan.crossArea?'#A35C2B':'';}
+        try{const plan=getTransfer();box.textContent=(plan.crossArea?'ATENCIÓN: usuarios de distintas áreas ('+plan.from.area+' → '+plan.to.area+'). ':'')+plan.inventoryCount+' bienes de inventario y '+plan.additionalCount+' adicionales pasarán a '+plan.to.name+' · '+plan.name+(plan.merged?'. Se conservarán los datos y la foto de la ubicación destino.':'.');box.style.color=plan.crossArea?'#A35C2B':'';}
         catch(error){box.textContent=error.message;box.style.color='';}
     }
     document.getElementById('transfer-from').onchange=updateTransferLocations;
-    document.getElementById('transfer-to').onchange=updateTransferSummary;
+    document.getElementById('transfer-to').onchange=updateTransferTargets;
+    document.getElementById('transfer-target-location').onchange=()=>{document.getElementById('transfer-new-location-label').hidden=document.getElementById('transfer-target-location').value!=='__new__';updateTransferSummary();};
     document.getElementById('transfer-location').onchange=()=>{document.getElementById('transfer-name').value='';updateTransferSummary();};
     document.getElementById('transfer-name').oninput=updateTransferSummary;
 
     document.getElementById('transfer-submit').onclick=()=>{
         let plan;try{plan=getTransfer();}catch(e){return showToast(e.message,'warning');}
-        showConfirm(plan.crossArea?'Transferencia entre áreas diferentes':'Transferir ubicación',`${plan.from.name} (área ${plan.from.area}) → ${plan.to.name} (área ${plan.to.area}). Ubicación: ${plan.location} → ${plan.name}. Se transferirán ${plan.inventoryCount} bienes de inventario y ${plan.additionalCount} adicionales, con su fotografía e infraestructura.`,async()=>{
+        showConfirm(plan.crossArea?'Transferencia entre áreas diferentes':'Transferir ubicación',`${plan.from.name} (área ${plan.from.area}) → ${plan.to.name} (área ${plan.to.area}). Ubicación: ${plan.location} → ${plan.name}. Se transferirán ${plan.inventoryCount} bienes de inventario y ${plan.additionalCount} adicionales. ${plan.merged?'Se conservarán los datos y la foto existentes en el destino.':'Se trasladarán la fotografía y los datos de la ubicación de origen.'}`,async()=>{
             const button=document.getElementById('transfer-submit');button.disabled=true;document.getElementById('loading-overlay').classList.add('show');
             try{
-                plan=getTransfer();await photoDB.flush();
-                const photo=await photoDB.getItem('photos','location-'+plan.sourcePhoto);
-                if(await photoDB.getItem('photos','location-'+plan.targetPhoto))throw Error('Existe una fotografía previa en el destino. Usa otro nombre de ubicación.');
-                if(photo)plan.next.locationPhotos[plan.targetPhoto]=true;
-                await new Promise((resolve,reject)=>{const tx=photoDB.db.transaction(['appData','photos'],'readwrite');tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error||Error('No se pudo guardar la transferencia'));tx.objectStore('appData').put(InventoryData.clean(plan.next),'mainState');if(photo)tx.objectStore('photos').put(photo,'location-'+plan.targetPhoto);});
+                plan=getTransfer();await photoDB.flush();await InventoryRecovery.create(photoDB,state,'Antes de transferir ubicación: '+plan.location);
+                const photo=await photoDB.getItem('photos','location-'+plan.sourcePhoto),targetPhoto=await photoDB.getItem('photos','location-'+plan.targetPhoto);
+                if(targetPhoto&&!plan.merged)throw Error('Existe una fotografía previa en el destino. Usa otro nombre de ubicación.');
+                const copy=photo&&!targetPhoto;if(photo||targetPhoto)plan.next.locationPhotos[plan.targetPhoto]=true;
+                await photoDB.setItem('appData','mainState',InventoryData.clean(plan.next),copy?[{store:'photos',key:'location-'+plan.targetPhoto,value:photo}]:[]);
                 saveSnapshot('Transferir ubicación: '+plan.location);state=plan.next;recalculateLocationCounts();updateBanner();renderUsers();populateFilters();renderDashboard();filterAndRenderInventory();renderAdicionales();populateTransferUsers();
                 showToast('Ubicación y bienes transferidos','success');
             }catch(e){showToast(e.message,'error');}finally{button.disabled=false;document.getElementById('loading-overlay').classList.remove('show');}
@@ -1136,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     function populateReportFilters() {
         const areas = [...new Set([...state.inventory.map(i=>i.areaOriginal), ...state.resguardantes.map(u=>u.area)])].sort();
-        document.getElementById('rep-area-select').innerHTML = '<option value="all">TODAS LAS ÁREAS (Múltiples Páginas)</option>' + areas.map(a => `<option value="${escapeHTML(a)}">Área ${escapeHTML(a)} - ${escapeHTML(cleanAreaName(a, NOMBRES_AREAS[a]||''))}</option>`).join('');
+        document.getElementById('rep-area-select').innerHTML = '<option value="all">TODAS LAS ÁREAS</option>' + areas.map(a => `<option value="${escapeHTML(a)}">Área ${escapeHTML(a)} - ${escapeHTML(cleanAreaName(a, NOMBRES_AREAS[a]||''))}</option>`).join('');
         updateReportUsers();
     }
 
@@ -1144,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const selArea = document.getElementById('rep-area-select').value;
         let users = state.resguardantes;
         if(selArea !== 'all') users = users.filter(u => u.area === selArea);
-        const areaOption = document.getElementById('rep-type-select').value === 'adicionales' && selArea !== 'all' ? '<option value="__area__">TODA EL ÁREA — UN SOLO REPORTE</option>' : '';
+        const areaOption = document.getElementById('rep-type-select').value === 'adicionales' ? '<option value="__area__">'+(selArea==='all'?'TODAS LAS ÁREAS':'TODA EL ÁREA')+' — UN SOLO REPORTE</option>' : '';
         document.getElementById('rep-user-select').innerHTML = '<option value="all">TODOS LOS USUARIOS ASIGNADOS (UN REPORTE POR USUARIO)</option>' + areaOption + users.map(u => `<option value="${escapeHTML(u.name)}">${escapeHTML(u.name)}</option>`).join('');
 
         const r = state.responsablesList.find(resp => resp.area === selArea) || {};
@@ -1176,6 +1182,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const r = state.responsablesList.find(resp => resp.area === u.area) || {};
             document.getElementById('rep-area-name').value = `ÁREA ${u.area} ${cleanAreaName(u.area, NOMBRES_AREAS[u.area]||'')}`; document.getElementById('rep-resp-name').value = r.name || ''; document.getElementById('rep-resp-title').value = r.title || '';
         }
+        if(document.getElementById('rep-user-select').value==='__area__'){const area=document.getElementById('rep-area-select').value,r=state.responsablesList.find(resp=>resp.area===area)||{};document.getElementById('rep-area-name').value=area==='all'?'TODAS LAS ÁREAS':`ÁREA ${area} ${cleanAreaName(area,NOMBRES_AREAS[area]||'')}`;document.getElementById('rep-resp-name').value=r.name||'';document.getElementById('rep-resp-title').value=r.title||'';}
         updateReportLocations();
     };
 
@@ -1183,7 +1190,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const type = document.getElementById('rep-type-select').value;
         const targetArea = document.getElementById('rep-area-select').value;
         const targetUser = document.getElementById('rep-user-select').value;
-        const consolidated = type === 'adicionales' && targetArea !== 'all' && targetUser === '__area__';
+        const consolidated = type === 'adicionales' && targetUser === '__area__';
+        const consolidatedAll=consolidated&&targetArea==='all';
         const targetLoc = document.getElementById('rep-location-select').value;
         const incAdic = document.querySelector('input[name="rep-inc-adic"]:checked').value === 'Si';
         const globalDate = document.getElementById('rep-date').value || new Date().toLocaleDateString();
@@ -1313,8 +1321,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (userItems.length === 0) continue;
 
-                const areaName = targetArea === 'all' ? `ÁREA ${u.area} ${cleanAreaName(u.area, NOMBRES_AREAS[u.area]||'')}` : (globalArea || `ÁREA ${u.area}`);
-                const respObj = state.responsablesList.find(r => r.area === u.area) || {}; const respName = targetArea === 'all' ? (respObj.name||'') : globalRespName; const respTitle = targetArea === 'all' ? (respObj.title||'') : globalRespTitle;
+                if(consolidated&&targetLoc!=='all')userItems=userItems.filter(i=>i.ubicacionEspecifica===targetLoc);if(!userItems.length)continue;
+                const areaName = consolidatedAll?(globalArea||'TODAS LAS ÁREAS'):targetArea === 'all' ? `ÁREA ${u.area} ${cleanAreaName(u.area, NOMBRES_AREAS[u.area]||'')}` : (globalArea || `ÁREA ${u.area}`);
+                const respObj = state.responsablesList.find(r => r.area === u.area) || {}; const respName = targetArea === 'all'&&!consolidatedAll ? (respObj.name||'') : globalRespName; const respTitle = targetArea === 'all'&&!consolidatedAll ? (respObj.title||'') : globalRespTitle;
 
                 officialReports.push({type,items:userItems,area:u.area,areaName:areaName||`ÁREA ${u.area}`,responsible:respName,responsibleTitle:respTitle,user:u.name,location:(()=>{const locations=[...new Set(userItems.map(i=>i.ubicacionEspecifica).filter(Boolean))];return locations[0]?locations[0]+(locations.length>1?' +'+(locations.length-1)+' más':''):'';})()});
 
