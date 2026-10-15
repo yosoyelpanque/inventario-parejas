@@ -22,6 +22,12 @@ document.addEventListener('DOMContentLoaded',()=>{
  const actions=$('nav-inventory-actions'),actionMarker=document.createComment('inventory-actions-position');actions.before(actionMarker);
  const top=$('backup-status'),version=$('device-status'),topMarker=document.createComment('status-position');top.before(topMarker);
  const footer=document.createElement('footer');footer.id='mobile-status-footer';$('app-container').after(footer);
+ const search=$('global-search-input'),keyboard=document.createElement('button');let numericInventory=true;
+ keyboard.id='inventory-keyboard-mode';keyboard.type='button';keyboard.className='inventory-keyboard-mode';keyboard.dataset.action='neutral';search.parentElement.append(keyboard);search.parentElement.classList.add('search-with-keyboard');
+ function updateKeyboard(){const inventory=mobile.matches&&document.querySelector('.tab-btn.active')?.dataset.tab==='inventory';keyboard.hidden=!inventory;search.inputMode=inventory?(numericInventory?'numeric':'text'):'search';search.enterKeyHint='search';keyboard.textContent=numericInventory?'ABC':'123';keyboard.setAttribute('aria-label',numericInventory?'Usar teclado alfanumérico':'Usar teclado numérico');keyboard.setAttribute('aria-pressed',String(!numericInventory));}
+ keyboard.onclick=()=>{const start=search.selectionStart,end=search.selectionEnd;search.blur();numericInventory=!numericInventory;updateKeyboard();search.focus({preventScroll:true});search.setSelectionRange(start,end);};
+ document.addEventListener('inventory-search-mode-change',updateKeyboard);
+ new MutationObserver(updateKeyboard).observe($('tabs-container'),{subtree:true,attributes:true,attributeFilter:['class']});mobile.addEventListener('change',updateKeyboard);updateKeyboard();
  const rfid=$('rfid-panel'),recovery=$('recovery-points').closest('section'),marker=document.createComment('settings-position');rfid.before(marker);
  function position(){if(mobile.matches){document.querySelector('.sticky-header').append(actions);footer.append(top,version);$('settings-tab').append(rfid,recovery);}else{actionMarker.after(actions);topMarker.after(top,version);marker.after(rfid,recovery);}}
  mobile.addEventListener('change',position);position();

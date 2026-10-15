@@ -440,10 +440,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (tab === 'settings') { populateExportAreas(); globalSearch.placeholder = 'No disponible aquí'; globalSearch.disabled = true; invActions.classList.add('hidden'); renderResponsablesSettings(); renderLoadedListings(); renderRecoveryPoints(); renderMagicProfiles();renderSessionHistory(); }
         const activeNav=document.querySelector('.tab-btn.active'),nav=document.getElementById('tabs-container');
         if(activeNav && nav.scrollWidth>nav.clientWidth)nav.scrollLeft=activeNav.offsetLeft-nav.offsetLeft-12;
-        updateBanner(); if(tab==='inventory') filterAndRenderInventory(); if(tab==='users') {renderUsers();populateTransferUsers();} if(tab==='adicionales') { populateFilters(); renderAdicionales(); toggleAdicFormFields('ad'); document.getElementById('ad-serie').focus(); } else focusSearch();
+        document.dispatchEvent(new Event('inventory-search-mode-change'));updateBanner(); if(tab==='inventory') filterAndRenderInventory(); if(tab==='users') {renderUsers();populateTransferUsers();} if(tab==='adicionales') { populateFilters(); renderAdicionales(); toggleAdicFormFields('ad'); document.getElementById('ad-serie').focus(); } else focusSearch();
     }
     document.getElementById('tabs-container').onclick = e => { if(e.target.closest('#toggle-header-btn') || e.target.closest('#nav-inventory-actions') || e.target.closest('#global-search-input')) return; const btn = e.target.closest('.tab-btn'); if(btn) { changeTab(btn.dataset.tab);if(['users','adicionales'].includes(btn.dataset.tab))document.querySelector('.sticky-header').scrollIntoView({block:'start'});else window.scrollTo(0,0); } };
-    document.getElementById('toggle-header-btn').onclick = () => { document.getElementById('main-header').classList.toggle('hidden'); document.getElementById('dashboard-stats').classList.toggle('hidden'); const i = document.getElementById('toggle-header-icon'); if(document.getElementById('main-header').classList.contains('hidden')) { i.classList.replace('fa-minus', 'fa-plus'); } else { i.classList.replace('fa-plus', 'fa-minus'); } };
+    let headerHideTimer;
+    function hideHeader(){clearTimeout(headerHideTimer);document.getElementById('main-header').classList.add('hidden');document.getElementById('dashboard-stats').classList.add('hidden');document.getElementById('toggle-header-icon').classList.replace('fa-minus','fa-plus');}
+    function scheduleHeaderHide(){clearTimeout(headerHideTimer);if(!document.getElementById('main-app').classList.contains('hidden')&&!document.getElementById('main-header').classList.contains('hidden'))headerHideTimer=setTimeout(hideHeader,5000);}
+    document.getElementById('toggle-header-btn').onclick=()=>{if(!document.getElementById('main-header').classList.contains('hidden'))return hideHeader();document.getElementById('main-header').classList.remove('hidden');document.getElementById('dashboard-stats').classList.remove('hidden');document.getElementById('toggle-header-icon').classList.replace('fa-plus','fa-minus');scheduleHeaderHide();};
+    for(const event of ['pointerdown','keydown'])document.getElementById('main-header').addEventListener(event,scheduleHeaderHide);
+    new MutationObserver(scheduleHeaderHide).observe(document.getElementById('main-app'),{attributes:true,attributeFilter:['class']});scheduleHeaderHide();
+
 
     document.getElementById('global-search-input').addEventListener('input', (e) => {
         const activeTab = document.querySelector('.tab-btn.active').dataset.tab; const term = e.target.value.trim().toUpperCase();
@@ -660,7 +666,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function doAction(action) {
         const cbs=document.querySelectorAll('.inv-cb:checked');if(!cbs.length)return showToast('Selecciona bienes','warning');
         if(action==='desubicar')showConfirm('Desubicar bienes','¿Seguro que deseas quitar la asignación de estos bienes?',()=>executeGlobalAction('desubicar',cbs));
-        else assignSelected([...cbs].map(cb=>cb.closest('tr').dataset.clave));
+        else assignSelected([...cbs].map(cb=>cb.closest('tr').dataset.clave),action==='reetiquetar');
     }
 
     function executeGlobalAction(action, cbs) {
@@ -669,7 +675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast(`Aplicado a ${cbs.length} bienes.`);
     }
 
-    document.getElementById('nav-ubicado-btn').onclick = ()=>doAction('ubicar'); document.getElementById('nav-desubicar-btn').onclick = ()=>doAction('desubicar');
+    document.getElementById('nav-ubicado-btn').onclick = ()=>doAction('ubicar'); document.getElementById('nav-reetiquetar-btn').onclick=()=>doAction('reetiquetar'); document.getElementById('nav-desubicar-btn').onclick = ()=>doAction('desubicar');
 
     document.getElementById('nav-bulk-note-btn').onclick = () => { noteSuggestionQuery=''; const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para nota', 'warning'); document.getElementById('note-textarea').value = ''; document.getElementById('note-save-btn').dataset.c = 'BULK';document.getElementById('note-draft-status').textContent='Nota masiva: este borrador no se conserva al cerrar la app.'; renderNoteSuggestions(); document.getElementById('notes-modal').classList.add('show'); setTimeout(() => document.getElementById('note-textarea').focus(), 100); };
     document.getElementById('nav-bulk-photo-btn').onclick = () => { if(photoSaving)return;photoSaveStatus.hidden=true;const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para foto', 'warning'); document.getElementById('photo-input').dataset.t = 'inventory-bulk'; document.getElementById('photo-input').dataset.bulkIds = Array.from(cbs).map(cb => cb.closest('tr').dataset.clave).join(','); document.getElementById('photo-view-container').classList.add('hidden'); document.getElementById('photo-upload-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); document.getElementById('photo-modal-title').textContent = `Foto Masiva (${cbs.length} bienes)`; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-camera-retro mr-2"></i> Capturar a Todos'; startCamera(); document.getElementById('photo-modal').classList.add('show'); };
