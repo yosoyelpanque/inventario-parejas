@@ -329,3 +329,6 @@ body:has(#users-tab.active) .sticky-header{padding-bottom:0}
 #note-legacy-text{white-space:pre-wrap;font-size:13px}
 @media(max-width:600px){#toggle-header-icon::before{content:'\f078';font-size:10px}#toggle-header-icon.fa-plus::before{content:'\f077'}#tabs-container #toggle-header-btn{background:transparent!important;border:0;box-shadow:none;color:#e2e8f0}}
 #notes-modal [hidden]{display:none!important}
+
+/* Keep the photographic report logo inside the printable header. */
+@media print { .print-album-header img { width: 110px; height: 65px; max-width: 110px; max-height: 65px; object-fit: contain; object-position: center; left: 5px; bottom: 10px; } }

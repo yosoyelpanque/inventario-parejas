@@ -1229,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (locsToPrint.length === 0) continue;
 
                 let albumPrintHtml = `
-                <div class="print-header">
+                <div class="print-header print-album-header">
                     <img src="logo.png">
                     <div class="print-header-text">
                         <div class="print-header-line">DIRECCIÓN GENERAL DE RECURSOS MATERIALES Y SERVICIOS</div>

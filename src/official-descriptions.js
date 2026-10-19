@@ -3,7 +3,7 @@
   const source=Object.freeze({fileName:'DESCRPCIONES DE MOBILIARIO (1).xlsx',sheet:'Hoja1'});
   const text=(key,label,required=true)=>({key,label,kind:'text',required});
   const quantity=(key,label,singular,plural,gender='m',defaultValue)=>({key,label,kind:'quantity',required:true,singular,plural,gender,...(defaultValue===undefined?{}:{defaultValue})});
-  const measure=(key='medidas',label='Medidas en centímetros',defaultValue)=>({key,label,kind:'measure',required:true,...(defaultValue===undefined?{}:{defaultValue})});
+  const measure=(key='medidas',label='Medidas en metros',defaultValue)=>({key,label,kind:'measure',required:true,...(defaultValue===undefined?{}:{defaultValue})});
   const color=()=>text('color','Color');
   const drawers=()=>quantity('cajones','Cantidad de cajones','CAJÓN','CAJONES');
   const trays=()=>quantity('gavetas','Cantidad de gavetas','GAVETA','GAVETAS','f');
@@ -20,7 +20,7 @@
   }
   add(2,'LIBRERO DE MADERA','LIBRERO DE MADERA COLOR {color} CON {entrepanos}',[color(),shelves()]);
   add(4,'LIBRERO DE MADERA CON PUERTAS','LIBRERO DE MADERA COLOR {color} CON {entrepanos}, {puertas} {detalles}',[color(),shelves(),doors(),text('detalles','Detalles adicionales',false)]);
-  add(6,'CREDENZA DE MADERA','CREDENZA DE MADERA COLOR {color} DE {medidas} CON {cajones} Y {gavetas}',[color(),measure('medidas','Medidas en centímetros','150 × 60'),drawers(),trays()]);
+  add(6,'CREDENZA DE MADERA','CREDENZA DE MADERA COLOR {color} DE {medidas} CON {cajones} Y {gavetas}',[color(),measure('medidas','Medidas en metros','1.50 X .60'),drawers(),trays()]);
   add(9,'CREDENZA DE MADERA CON LIBRERO COPETE','CREDENZA DE MADERA CON LIBRERO COPETE COLOR {color} CON {entrepanos} Y {puertas}',[color(),shelves(),doors()]);
   add(11,'ARCHIVERO DE MADERA','ARCHIVERO DE MADERA COLOR {color} CON {gavetas}',[color(),trays()]);
   add(13,'ARCHIVERO METÁLICO CON FRENTE DE MADERA','ARCHIVERO METÁLICO CON {gavetas} FRENTE DE MADERA COLOR {color}',[trays(),color()]);
@@ -55,8 +55,8 @@
   add(70,'SILLÓN EJECUTIVO FIJO TIPO TRINEO','SILLÓN EJECUTIVO FIJO TIPO TRINEO TAPIZADO EN TELA COLOR {color}',[color()]);
   add(72,'SILLÓN EJECUTIVO FIJO DE MADERA','SILLÓN EJECUTIVO FIJO DE MADERA TAPIZADO EN TELA COLOR {color}',[color()]);
   for(const [row,count,name] of [[74,'1','UNA PLAZA'],[75,'2','DOS PLAZAS'],[76,'3','TRES PLAZAS']])add(row,'SOFÁ '+name,'SOFÁ {plazas} TAPIZADO EN TELA {color}',[quantity('plazas','Cantidad de plazas','PLAZA','PLAZAS','f',count),color()]);
-  add(77,'ESCRITORIO EJECUTIVO DE MADERA','ESCRITORIO EJECUTIVO DE MADERA COLOR {color} DE {medidas} CON {cajones} Y {gavetas}',[color(),measure('medidas','Medidas en centímetros','180 × 90'),drawers(),trays()]);
-  add(79,'ESCRITORIO EJECUTIVO DE MADERA TLM','ESCRITORIO EJECUTIVO DE MADERA TLM COLOR {color} DE {medidas} CON {cajones} Y {gavetas}',[color(),measure('medidas','Medidas en centímetros','180 × 90'),drawers(),trays()]);
+  add(77,'ESCRITORIO EJECUTIVO DE MADERA','ESCRITORIO EJECUTIVO DE MADERA COLOR {color} DE {medidas} CON {cajones} Y {gavetas}',[color(),measure('medidas','Medidas en metros','1.80 X .90'),drawers(),trays()]);
+  add(79,'ESCRITORIO EJECUTIVO DE MADERA TLM','ESCRITORIO EJECUTIVO DE MADERA TLM COLOR {color} DE {medidas} CON {cajones} Y {gavetas}',[color(),measure('medidas','Medidas en metros','1.80 X .90'),drawers(),trays()]);
   // Las filas 81, 83 y 85 mezclan «1.50*90»: no se presume la unidad de cada eje.
   add(81,'ESCRITORIO SECRETARIAL DE MADERA TLM','ESCRITORIO SECRETARIAL DE MADERA TLM COLOR {color} DE {medidas} CON {cajones} Y {gavetas}',[color(),measure(),drawers(),trays()]);
   add(83,'ESCRITORIO SECRETARIAL CON ESTRUCTURA METÁLICA','ESCRITORIO SECRETARIAL DE MADERA COLOR {color} DE {medidas} CON {cajones} Y {gavetas} CON ESTRUCTURA METÁLICA',[color(),measure(),drawers(),trays()],[85]);
@@ -81,13 +81,15 @@
     return hundreds[Math.floor(number/100)]+(number%100?' '+quantityToWords(number%100,gender):'');
   }
   function formatMeasure(value){
-    const input=String(value??'').trim().replace(/\s*cm\s*$/i,'').trim();
+    const raw=String(value??'').trim(),cm=/cm\s*$/i.test(raw);
+    const input=raw.replace(/\s*(?:cm|m)\s*$/i,'').trim();
     const components=input.split(/\s*[x×*]\s*/i);
-    if(components.length<1||components.length>3||components.some(part=>! /^(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(part)))throw new Error('Escribe de una a tres medidas en centímetros, por ejemplo: 150 × 60.');
-    const values=components.map(part=>Number(part.replace(',','.')));
-    if(values.some(part=>!Number.isFinite(part)||part<=0||part>1000000))throw new Error('Cada medida debe ser mayor que cero y estar expresada en centímetros.');
-    return values.join(' × ')+' CM';
+    if(components.length<1||components.length>3||components.some(part=>! /^(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(part)))throw new Error('Escribe de una a tres medidas en metros, por ejemplo: 1.50 X .60.');
+    const values=components.map(part=>Number(part.replace(',','.'))/(cm?100:1));
+    if(values.some(part=>!Number.isFinite(part)||part<.005||part>1000000))throw new Error('Cada medida debe ser mayor que cero y estar expresada en metros.');
+    return values.map(n=>n.toFixed(2).replace(/^0\./,'.')).join(' X ');
   }
+
   function render(id,values={}){
     const entry=catalog.find(item=>item.id===id);
     if(!entry)throw new Error('No se encontró esa descripción oficial.');

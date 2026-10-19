@@ -5,3 +5,12 @@ test('límites de 80 y 146, escritura inmutable y fecha de creación preservada 
 test('notas antiguas conservan texto largo, sin inventar fecha, y un lote no reemplaza datos vacíos',()=>{const s=sample();s.notes['1']='Á'.repeat(300);const r=notes.get(s,'1');assert.equal(r.description1.length,80);assert.equal(r.description2.length,146);assert.equal(r.legacyOriginal.length,300);assert.equal(r.createdAt,null);const next=notes.save(s,['1'],{description1:'NUEVA',description2:'',marca:null,modelo:null,serie:null});assert.equal(next.noteDetails['1'].createdAt,null);assert.equal(next.noteDetails['1'].legacyOriginal.length,300);assert.equal(next.inventory[0].SERIE,'Á-X');});
 test('archivar conserva metadatos y exporta estado, colores y fechas sin perder descripción',()=>{let s=notes.save(sample(),['1'],{description1:'DESCRIPCIÓN',description2:''},false,'2026-10-19T12:00:00Z');s=operations.moveNotes(s,['1'],true).next;assert.equal(s.archivedNoteDetails['1'].createdAt,'2026-10-19T12:00:00Z');assert.equal(s.noteDetails['1'],undefined);assert.equal(notes.exported(s,'1')['Descripción 1'],'DESCRIPCION');assert.equal(notes.exported(s,'1')['Estado de nota'],'Archivada');});
 test('ordena por fecha, filtra por intervalo y conserva las notas antiguas al final',()=>{const s=sample();s.notes={a:'uno',b:'dos',c:'antigua'};s.noteDetails={a:{createdAt:'2026-10-18T12:00:00Z'},b:{createdAt:'2026-10-19T12:00:00Z'}};assert.deepEqual(notes.filter(s,['a','c','b'],false),['b','a','c']);assert.deepEqual(notes.filter(s,['a','c','b'],false,'2026-10-19','2026-10-19'),['b']);assert.deepEqual(notes.filter(s,['a','c','b'],false,'','','undated'),['c']);});
+
+ test('descripciones convierten centímetros explícitos sin alterar cantidades o identificadores',()=>{
+ const R=require('../src/structured-notes.js');
+ assert.equal(R.description('mesa 90 x 80 cm con 2 cajones'), 'MESA .90 X .80 CON 2 CAJONES');
+ assert.equal(R.description('librero 150 CM'), 'LIBRERO 1.50');
+ assert.equal(R.description('mesa 1.50 X .80, modelo 150'), 'MESA 1.50 X .80, MODELO 150');
+ const s={inventory:[{'CLAVE UNICA':'1',DESCRIPCION:'mesa 90 x 80 cm',UBICADO:'NO'}],additionalItems:[]};
+ assert.equal(R.normalizeState(s),true);assert.equal(s.inventory[0]._reviewOriginal.DESCRIPCION,'mesa 90 x 80 cm');assert.equal(R.normalizeState(s),false);
+ });

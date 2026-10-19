@@ -6,7 +6,7 @@ test('renumera claves automáticas y conserva manuales, incluso con prefijo CD',
 });
 test('vincular conserva campos originales y añade toda la evidencia a las notas',()=>{
  const s=base(),n=R.linkDraft(s,'a1','100001'),item=n.inventory[0];
- assert.equal(s.additionalItems.length,1);assert.equal(n.additionalItems.length,0);assert.equal(item.DESCRIPCION,'Original');
+ assert.equal(s.additionalItems.length,1);assert.equal(n.additionalItems.length,0);assert.equal(item.DESCRIPCION,'ORIGINAL');assert.equal(item._reviewOriginal.DESCRIPCION,'Original');
  assert.equal(item.UBICADO,'SI');assert.equal(item.RE_ETIQUETADO,'SI');assert.equal(item['NOMBRE DE USUARIO'],'Ana');assert.equal(item.ubicacionEspecifica,'Oficina');assert.equal(item.areaIncorrecta,true);
  for(const text of ['Nota anterior','Observada','Marca','Modelo','S001'])assert.ok(n.notes['100001'].includes(text));
 });

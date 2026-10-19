@@ -1,6 +1,6 @@
 (function(root) {
   'use strict';
-  const normalize=value=>typeof value==='string'?value.normalize('NFC').trim().replace(/\s+/g,' ').toUpperCase():'';
+  const normalize=value=>typeof value==='string'?(root.InventoryNotes?.description(value)??value).normalize('NFC').trim().replace(/\s+/g,' ').toUpperCase():'';
   const unique=values=>[...new Set(values.map(normalize).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
   const array=value=>Array.isArray(value)?value:[];
   const dismissed=state=>unique(array(state?.dismissedDescriptions));
