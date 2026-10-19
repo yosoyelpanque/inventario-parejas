@@ -345,3 +345,5 @@ body:has(#users-tab.active) .sticky-header{padding-bottom:0}
 .note-editor-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 20px 16px;scroll-padding:16px}
 .note-editor-actions{flex:none;display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;border-top:1px solid #e2e8f0;background:white}
 @media(max-width:600px){.asset-header-title{font-size:17px}.asset-header-key{font-size:12px}.asset-header-key strong{font-size:17px}.note-editor-dialog>header{padding:12px 14px}.note-editor-dialog>header h3{font-size:19px}.note-editor-body{padding:0 14px 12px}.note-editor-actions{padding:10px 14px}.note-editor-actions button{flex:1;padding:10px!important;font-size:15px!important}}
+
+.note-card{min-height:210px;max-height:350px;min-width:0}.note-card-action{width:44px;height:44px;flex:none}.note-card>div:last-child{min-height:0;overflow-wrap:anywhere}

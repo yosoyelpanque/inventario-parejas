@@ -882,9 +882,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const input=document.getElementById(noteSuggestionField),box=document.getElementById('note-suggestions'),spec=['note-marca','note-modelo','note-serie'].includes(noteSuggestionField)?noteSuggestionField.slice(5):null;
         const target=document.getElementById('note-save-btn').dataset.c,keys=target==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[target],context=keys.map(key=>InventoryNotes.item(state,key)).map(i=>i?.DESCRIPCION||i?.DESCRripcion||i?.descripcion||'');
         const saved=InventoryNoteSuggestions.entries(state,noteSuggestionQuery,context),templates=InventoryNoteSuggestions.templates(state,noteSuggestionQuery,context);
-        const candidates=spec?[...state.inventory.map(i=>i[spec.toUpperCase()]),...state.additionalItems.map(i=>i[spec]),...Object.values(state.noteDetails||{}).map(r=>r[spec]),...Object.values(state.archivedNoteDetails||{}).map(r=>r[spec])]:[];
-        const specKey=value=>'field:'+spec+':'+value,excluded=new Set((state.dismissedNoteSuggestions||[]).map(InventoryNoteSuggestions.key));
-        const suggestions=spec?[...new Set(candidates.filter(v=>typeof v==='string').map(v=>v.trim()).filter(v=>v&&!InventoryNotes.missing(v)))].filter(v=>!excluded.has(InventoryNoteSuggestions.key(specKey(v)))&&v.toLocaleUpperCase().includes(input.value.toLocaleUpperCase())).sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).slice(0,8).map(text=>({text})):[...saved.map(r=>({...r,official:!!r.templateId})),...templates.map(t=>({text:t.preview,templateId:t.id,official:true,template:true}))];
+        const specKey=value=>'field:'+spec+':'+value;
+        const suggestions=spec?InventoryNotes.suggestions(state,spec,input.value).map(text=>({text})):[...saved.map(r=>({...r,official:!!r.templateId})),...templates.map(t=>({text:t.preview,templateId:t.id,official:true,template:true}))];
         box.replaceChildren();(input.closest('label')||input).after(box);if(!suggestions.length)return;
         const label=document.createElement('p');label.textContent=spec?'Sugerencias de '+({marca:'marcas',modelo:'modelos',serie:'series'}[spec]):'Sugerencias guardadas y descripciones oficiales';box.append(label);
         for(const suggestion of suggestions){
@@ -958,7 +957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('retag-bulk-archive').onclick=()=>{const keys=[...retagSelected],reopen=retagArchived;if(!keys.length||retagSaving)return;showConfirm(reopen?'Volver a pendientes':'Confirmar etiquetas colocadas',reopen?'Los bienes seleccionados volverán a pendientes.':`Se archivarán ${keys.length} bienes como etiquetados. Confirma que ya colocaste sus etiquetas.`,async()=>{if(retagSaving)return;retagSaving=true;renderRetagList();try{let next=state;for(const key of keys)next=reopen?InventoryRetag.reopen(next,key):InventoryRetag.complete(next,key,state.currentUser?.name);await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot('Archivar reetiquetado masivo');state=next;retagSelected.clear();filterAndRenderInventory();showToast('Actualizados '+keys.length+' bienes.','success');}catch(e){showToast('No se pudo guardar: '+e.message,'error');}finally{retagSaving=false;renderRetagList();}});};
     document.getElementById('retag-more').onclick=()=>{retagLimit+=30;renderRetagList();};
 
-    window.viewArchivedNotes = false;
+    try{window.viewArchivedNotes=localStorage.getItem('inventario-notes-view')==='archived';}catch{window.viewArchivedNotes=false;}
     window.currentNotesPage = 1;
     const notesPerPage = 6;
     const selectedNotes=new Set();
@@ -967,6 +966,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('filter-notas-archived').onclick = () => { window.viewArchivedNotes=true;selectedNotes.clear(); window.currentNotesPage=1; updateNotasTabUI(); renderNotasTab(); };
 
     function updateNotasTabUI() {
+        try{localStorage.setItem('inventario-notes-view',window.viewArchivedNotes?'archived':'active');}catch{}
         document.getElementById('filter-notas-active').setAttribute('aria-pressed', String(!window.viewArchivedNotes));
         document.getElementById('filter-notas-archived').setAttribute('aria-pressed', String(!!window.viewArchivedNotes));
     }
@@ -976,6 +976,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return InventoryNotes.filter(state,InventorySearch.notes(state,window.viewArchivedNotes,query),window.viewArchivedNotes,document.getElementById('notes-date-from').value,document.getElementById('notes-date-to').value,document.getElementById('notes-date-order').value);
     }
     window.renderNotasTab = function() {
+        updateNotasTabUI();
         renderRetagList();
         const reviews=document.getElementById('additional-review-list');reviews.replaceChildren();
         const query=document.querySelector('.tab-btn.active')?.dataset.tab==='notas'?document.getElementById('global-search-input').value:'';
@@ -995,8 +996,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const paginatedKeys = keys.slice((window.currentNotesPage - 1) * notesPerPage, window.currentNotesPage * notesPerPage);
 
         container.innerHTML = paginatedKeys.map(clave => {
-            const item = InventoryNotes.item(state,clave); const desc = item ? (item.DESCRIPCION || item.DESCRripcion||item.descripcion) : 'Bien No Encontrado'; const texto = targetObj[clave];const date=InventoryNotes.get(state,clave,window.viewArchivedNotes).createdAt;const createdLabel=date?new Date(date).toLocaleString('es-MX'):'Sin fecha (nota anterior)';
-            return `<div class="bg-white p-4 rounded-xl border shadow-sm flex flex-col h-48"><div class="flex justify-between items-start mb-2 border-b pb-2 shrink-0"><div class="min-w-0 pr-2"><label><input type="checkbox" class="note-select" data-key="${escapeHTML(clave)}" aria-label="Seleccionar nota ${escapeHTML(clave)}" ${selectedNotes.has(clave)?'checked':''}> <span class="font-black text-indigo-900">${escapeHTML(clave)}</span></label><p class="text-xs font-bold text-gray-500 truncate" title="${escapeHTML(desc)}">${escapeHTML(desc)}</p></div><div class="flex gap-2 shrink-0"><button data-action="note" class="w-8 h-8 rounded-md" onclick="showNoteModal(${inlineValue(clave)})"><i class="fa-solid fa-pen"></i></button>${window.viewArchivedNotes ? `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, false)"><i class="fa-solid fa-box-open"></i></button>` : `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, true)"><i class="fa-solid fa-box-archive"></i></button>`}</div></div><div class="text-sm text-gray-700 font-medium overflow-y-auto whitespace-pre-wrap flex-grow">${escapeHTML(texto)}<p class="note-created-date">Creación: ${escapeHTML(createdLabel)}</p></div></div>`;
+            const item = InventoryNotes.item(state,clave); const desc = item ? (item.DESCRIPCION || item.DESCRripcion||item.descripcion) : 'Bien No Encontrado'; const record=InventoryNotes.get(state,clave,window.viewArchivedNotes),meta=(window.viewArchivedNotes?state.archivedNoteDetails:state.noteDetails)?.[clave];const texto=meta?[targetObj[clave]||[record.description1,record.description2].filter(Boolean).join(' '),...['marca','modelo','serie'].filter(n=>meta[n]!=null).map(n=>n.toUpperCase()+': '+InventoryNotes.specValue(n,meta[n]))].filter(Boolean).join('\n'):targetObj[clave];const date=InventoryNotes.get(state,clave,window.viewArchivedNotes).createdAt;const createdLabel=date?new Date(date).toLocaleString('es-MX'):'Sin fecha (nota anterior)';
+            return `<div class="note-card bg-white p-4 rounded-xl border shadow-sm flex flex-col"><div class="flex justify-between items-start mb-2 border-b pb-2 shrink-0"><div class="min-w-0 pr-2"><label><input type="checkbox" class="note-select" data-key="${escapeHTML(clave)}" aria-label="Seleccionar nota ${escapeHTML(clave)}" ${selectedNotes.has(clave)?'checked':''}> <span class="font-black text-indigo-900">${escapeHTML(clave)}</span></label><p class="text-xs font-bold text-gray-500 truncate" title="${escapeHTML(desc)}">${escapeHTML(desc)}</p></div><div class="flex gap-2 shrink-0"><button data-action="note" class="note-card-action rounded-md" aria-label="Editar nota" title="Editar nota" onclick="showNoteModal(${inlineValue(clave)})"><i class="fa-solid fa-pen"></i></button>${window.viewArchivedNotes ? `<button data-action="edit" class="note-card-action rounded-md" aria-label="Desarchivar nota" title="Desarchivar nota" onclick="toggleArchiveNote(${inlineValue(clave)}, false)"><i class="fa-solid fa-box-open"></i></button>` : `<button data-action="edit" class="note-card-action rounded-md" aria-label="Archivar nota" title="Archivar nota" onclick="toggleArchiveNote(${inlineValue(clave)}, true)"><i class="fa-solid fa-box-archive"></i></button>`}</div></div><div class="text-sm text-gray-700 font-medium overflow-y-auto whitespace-pre-wrap flex-grow">${escapeHTML(texto)}<p class="note-created-date">Creación: ${escapeHTML(createdLabel)}</p></div></div>`;
         }).join('');
 
         pagContainer.innerHTML = `<button data-action="neutral" class="px-5 py-2 font-bold rounded-lg ${window.currentNotesPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'}" onclick="if(window.currentNotesPage > 1) { window.currentNotesPage--; renderNotasTab(); }">Anterior</button><span class="font-bold text-gray-600">Página ${window.currentNotesPage} de ${totalPages}</span><button data-action="neutral" class="px-5 py-2 font-bold rounded-lg ${window.currentNotesPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'}" onclick="if(window.currentNotesPage < ${totalPages}) { window.currentNotesPage++; renderNotasTab(); }">Siguiente</button>`;
@@ -1006,11 +1007,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     for(const id of ['notes-date-from','notes-date-to','notes-date-order'])document.getElementById(id).onchange=()=>{window.currentNotesPage=1;selectedNotes.clear();renderNotasTab();};
     document.getElementById('notes-select-all').onclick=()=>{filteredNoteKeys().forEach(k=>selectedNotes.add(k));renderNotasTab();};
     document.getElementById('notes-clear-selection').onclick=()=>{selectedNotes.clear();renderNotasTab();};
+    let notesMoving=false;
     async function moveSelectedNotes(keys,toArchive){
+        if(notesMoving)return;notesMoving=true;
         const button=document.getElementById('notes-bulk-move');button.disabled=true;document.getElementById('loading-overlay').classList.add('show');
         try{const result=InventoryOperations.moveNotes(state,keys,toArchive);if(!result.count)return;await photoDB.setItem('appData','mainState',InventoryData.clean(result.next));saveSnapshot(toArchive?'Archivar notas':'Desarchivar notas');state=result.next;selectedNotes.clear();renderNotasTab();filterAndRenderInventory();showToast(result.count+' notas '+(toArchive?'archivadas':'desarchivadas'),'success');}
         catch{showToast('No se pudo guardar. Las notas y la selección se conservan.','error');}
-        finally{document.getElementById('loading-overlay').classList.remove('show');button.disabled=!selectedNotes.size;}
+        finally{notesMoving=false;document.getElementById('loading-overlay').classList.remove('show');button.disabled=!selectedNotes.size;}
     }
     document.getElementById('notes-bulk-move').onclick=()=>{const keys=[...selectedNotes],archive=!window.viewArchivedNotes;if(!keys.length)return;showConfirm(archive?'Archivar notas':'Desarchivar notas',`Se moverán ${keys.length} notas seleccionadas, incluidas las de otras páginas. Si ya existe otra nota del mismo bien en destino, se conservarán ambos textos.`,()=>moveSelectedNotes(keys,archive));};
     window.toggleArchiveNote=(clave,toArchive)=>moveSelectedNotes([clave],toArchive);

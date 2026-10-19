@@ -14,3 +14,14 @@ test('ordena por fecha, filtra por intervalo y conserva las notas antiguas al fi
  const s={inventory:[{'CLAVE UNICA':'1',DESCRIPCION:'mesa 90 x 80 cm',UBICADO:'NO'}],additionalItems:[]};
  assert.equal(R.normalizeState(s),true);assert.equal(s.inventory[0]._reviewOriginal.DESCRIPCION,'mesa 90 x 80 cm');assert.equal(R.normalizeState(s),false);
  });
+
+test('normaliza SIN MARCA/MODELO/SERIE con sufijos, conserva originales y valores reales',()=>{
+ const s=sample();Object.assign(s.inventory[0],{UBICADO:'NO',MARCA:'SIN MARCA D',MODELO:'SIN MODELO A',SERIE:'SIN SERIE XXXXX 12345'});
+ notes.normalizeState(s);assert.equal(s.inventory[0].MARCA,'SIN MARCA');assert.equal(s.inventory[0].MODELO,'SIN MODELO');assert.equal(s.inventory[0].SERIE,'SIN SERIE');assert.equal(s.inventory[0]._reviewOriginal.SERIE,'SIN SERIE XXXXX 12345');assert.equal(notes.normalizeState(s),false);
+ for(const name of ['marca','modelo','serie'])assert.equal(notes.specValue(name,'SIN '+name.toUpperCase()+' 0.12345'),'SIN '+name.toUpperCase());
+ assert.equal(notes.specValue('serie','SINSERIE-123'),'SINSERIE-123');assert.equal(notes.specValue('marca','DELL'),'DELL');
+});
+test('sugerencias incluyen una sola variante SIN por campo y conservan marcas normales',()=>{
+ const s={inventory:[{MARCA:'SIN MARCA D',MODELO:'SIN MODELO A',SERIE:'SIN SERIE 123'},{MARCA:'DELL'},{MARCA:'LENOVO'},{MARCA:'TRIPLITE'},{MARCA:'dell'}],additionalItems:[],noteDetails:{a:{marca:'SIN MARCA XXXXX'}},archivedNoteDetails:{b:{marca:'SIN MARCA 9'}}};
+ assert.deepEqual(notes.suggestions(s,'marca'),['DELL','LENOVO','SIN MARCA','TRIPLITE']);assert.deepEqual(notes.suggestions(s,'modelo'),['SIN MODELO']);assert.deepEqual(notes.suggestions(s,'serie'),['SIN SERIE']);assert.deepEqual(notes.suggestions(s,'marca','LEN'),['LENOVO']);
+});
