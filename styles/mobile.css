@@ -56,3 +56,8 @@
 }
 
 @media screen and (max-width:600px){body.editing-additional .sticky-header{position:sticky!important;top:0}}
+
+/* Equal side gutters keep tabs centered; the disclosure sits at the outer right. */
+#tabs-container{padding-right:38px;padding-left:38px;justify-content:center}
+#tabs-container #toggle-header-btn{position:absolute;right:4px;left:auto;top:8px;width:28px;height:28px;margin:0}
+@media screen and (max-width:600px){#tabs-container{padding:4px 34px!important}#tabs-container #toggle-header-btn{left:auto;right:3px;top:8px}}

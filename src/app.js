@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const photoDB = window.InventoryStorage;
 
-    function locatedWarning(id,name){const box=document.getElementById(id);box.hidden=!name;box.textContent=name?'Este bien ya está ubicado con '+name+'. Puedes continuar editando sus datos.':'';}
+    function locatedWarning(id,name){const box=document.getElementById(id);box.hidden=!name;box.textContent=name?'UBICADO CON: '+name:'';}
     const photoViewRequests=new WeakMap();
     function photoDescription(type,id){const item=type==='inventory'?state.inventory.find(i=>i['CLAVE UNICA']===id):type==='additional'?state.additionalItems.find(i=>i.id===id):null;return item?.DESCRIPCION||item?.DESCRripcion||item?.descripcion||'';}
     function photoKey(type,id){return type==='inventory'?String(id):(type==='additional'?state.additionalItems.find(item=>item.id===id)?.claveAsignada||'':'');}
@@ -684,7 +684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('nav-ubicado-btn').onclick = ()=>doAction('ubicar'); document.getElementById('nav-reetiquetar-btn').onclick=()=>doAction('reetiquetar'); document.getElementById('nav-desubicar-btn').onclick = ()=>doAction('desubicar');
 
-    document.getElementById('nav-bulk-note-btn').onclick=()=>{if(!document.querySelector('.inv-cb:checked'))return showToast('Selecciona bienes para nota','warning');noteSuggestionQuery='';noteEditingArchived=false;fillNoteForm({},null,true);document.getElementById('note-save-btn').dataset.c='BULK';document.getElementById('note-draft-status').textContent='Se aplicará a los bienes seleccionados. Los datos vacíos de marca, modelo y serie conservarán el valor de cada bien.';renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show');};
+    document.getElementById('nav-bulk-note-btn').onclick=()=>{if(!document.querySelector('.inv-cb:checked'))return showToast('Selecciona bienes para nota','warning');noteSuggestionField='note-textarea';noteSuggestionQuery='';noteEditingArchived=false;fillNoteForm({},null,true);document.getElementById('note-save-btn').dataset.c='BULK';document.getElementById('note-draft-status').textContent='Se aplicará a los bienes seleccionados. Los datos vacíos de marca, modelo y serie conservarán el valor de cada bien.';renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show');};
 
     document.getElementById('nav-bulk-photo-btn').onclick = () => { if(photoSaving)return;photoSaveStatus.hidden=true;const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para foto', 'warning'); document.getElementById('photo-input').dataset.t = 'inventory-bulk'; document.getElementById('photo-input').dataset.bulkIds = Array.from(cbs).map(cb => cb.closest('tr').dataset.clave).join(','); document.getElementById('photo-view-container').classList.add('hidden'); document.getElementById('photo-upload-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); document.getElementById('photo-modal-title').textContent = `Foto Masiva (${cbs.length} bienes)`; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-camera-retro mr-2"></i> Capturar a Todos'; startCamera(); document.getElementById('photo-modal').classList.add('show'); };
     document.getElementById('ad-bulk-autofill-btn').onclick = () => { if (!state.additionalItems || state.additionalItems.length === 0) return showToast('No hay adicionales.', 'warning'); saveSnapshot(); let updatedCount = 0; state.additionalItems.forEach(item => { if (item.serie) { const perfil = matchMagicProfile(String(item.serie).toUpperCase().trim()); if (perfil) { let changed = false; if (item.descripcion !== perfil.desc) { item.descripcion = perfil.desc; changed = true; } if (item.marca !== perfil.marca) { item.marca = perfil.marca; changed = true; } if (item.modelo !== perfil.modelo) { item.modelo = perfil.modelo; changed = true; } if (item.posesion !== (perfil.posesion||'Cámara')) { item.posesion = perfil.posesion||'Cámara'; if(item.posesion === 'Arrendamiento') item.numContrato = 'LXVIDGAJ- 070/2024'; changed = true; } if (changed) updatedCount++; } } }); if (updatedCount > 0) { recalculateAdicionalesKeys(); saveState(); renderAdicionales(); filterAndRenderInventory(); showToast(`Autocompletados ${updatedCount} bienes.`, 'success'); } else showToast('Sin coincidencias.', 'info'); };
@@ -877,26 +877,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     for(const id of ['note-description2','note-marca','note-modelo','note-serie'])document.getElementById(id).addEventListener('input',()=>{updateNoteDescription();const key=document.getElementById('note-save-btn').dataset.c;if(key&&key!=='BULK'){drafts.notes[key]=noteFormValues();persistDrafts();}});
     document.getElementById('note-textarea').addEventListener('paste',event=>{const input=event.currentTarget,text=event.clipboardData?.getData('text');if(!text)return;const value=input.value.slice(0,input.selectionStart)+text+input.value.slice(input.selectionEnd);if(value.length<=80)return;event.preventDefault();applyNoteDescription(value+document.getElementById('note-description2').value);input.dispatchEvent(new Event('input',{bubbles:true}));});
     for(const id of ['note-textarea','note-description2','note-marca','note-modelo'])document.getElementById(id).addEventListener('blur',e=>{e.target.value=InventoryNotes.plain(e.target.value);updateNoteDescription();});
-    let noteSuggestionSaving=false,noteSuggestionQuery='';
+    let noteSuggestionSaving=false,noteSuggestionQuery='',noteSuggestionField='note-textarea';
     function renderNoteSuggestions() {
-        const input=document.getElementById('note-textarea'),box=document.getElementById('note-suggestions');
+        const input=document.getElementById(noteSuggestionField),box=document.getElementById('note-suggestions'),spec=['note-marca','note-modelo','note-serie'].includes(noteSuggestionField)?noteSuggestionField.slice(5):null;
         const target=document.getElementById('note-save-btn').dataset.c,keys=target==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[target],context=keys.map(key=>InventoryNotes.item(state,key)).map(i=>i?.DESCRIPCION||i?.DESCRripcion||i?.descripcion||'');
         const saved=InventoryNoteSuggestions.entries(state,noteSuggestionQuery,context),templates=InventoryNoteSuggestions.templates(state,noteSuggestionQuery,context);
-        const suggestions=[...saved.map(r=>({...r,official:!!r.templateId})),...templates.map(t=>({text:t.preview,templateId:t.id,official:true,template:true}))];
-        box.replaceChildren();if(!suggestions.length)return;
-        const label=document.createElement('p');label.textContent='Sugerencias guardadas y descripciones oficiales';box.append(label);
+        const candidates=spec?[...state.inventory.map(i=>i[spec.toUpperCase()]),...state.additionalItems.map(i=>i[spec]),...Object.values(state.noteDetails||{}).map(r=>r[spec]),...Object.values(state.archivedNoteDetails||{}).map(r=>r[spec])]:[];
+        const specKey=value=>'field:'+spec+':'+value,excluded=new Set((state.dismissedNoteSuggestions||[]).map(InventoryNoteSuggestions.key));
+        const suggestions=spec?[...new Set(candidates.filter(v=>typeof v==='string').map(v=>v.trim()).filter(v=>v&&!InventoryNotes.missing(v)))].filter(v=>!excluded.has(InventoryNoteSuggestions.key(specKey(v)))&&v.toLocaleUpperCase().includes(input.value.toLocaleUpperCase())).sort((a,b)=>a.localeCompare(b,'es',{numeric:true})).slice(0,8).map(text=>({text})):[...saved.map(r=>({...r,official:!!r.templateId})),...templates.map(t=>({text:t.preview,templateId:t.id,official:true,template:true}))];
+        box.replaceChildren();(input.closest('label')||input).after(box);if(!suggestions.length)return;
+        const label=document.createElement('p');label.textContent=spec?'Sugerencias de '+({marca:'marcas',modelo:'modelos',serie:'series'}[spec]):'Sugerencias guardadas y descripciones oficiales';box.append(label);
         for(const suggestion of suggestions){
             const note=suggestion.text;
             const row=document.createElement('div'),button=document.createElement('button'),remove=document.createElement('button');
             row.className='note-suggestion-row';button.type=remove.type='button';button.dataset.action='note';button.className='note-suggestion';button.textContent=note;if(suggestion.official){const badge=document.createElement('span');badge.className='note-official-badge';badge.textContent='✓ '+(suggestion.template?'Oficial':'De plantilla oficial');button.prepend(badge);}
-            button.onclick=()=>{if(suggestion.template){InventoryOfficialNoteEditor.open(suggestion.templateId,text=>{drafts.officialDescriptions??={};drafts.officialDescriptions[InventoryNoteSuggestions.key(text)]={text,templateId:suggestion.templateId};applyNoteDescription(text);input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();});return;}applyNoteDescription(note);input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();};
+            button.onclick=()=>{if(spec){input.value=note;input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus({preventScroll:true});return;}if(suggestion.template){InventoryOfficialNoteEditor.open(suggestion.templateId,text=>{drafts.officialDescriptions??={};drafts.officialDescriptions[InventoryNoteSuggestions.key(text)]={text,templateId:suggestion.templateId};applyNoteDescription(text);input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();});return;}applyNoteDescription(note);input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();};
             remove.textContent='×';remove.className='note-suggestion-remove';remove.dataset.action='danger';remove.disabled=noteSuggestionSaving;
             remove.title='Eliminar sugerencia';remove.setAttribute('aria-label','Eliminar sugerencia de nota: '+note);
             remove.onclick=async()=>{
                 if(noteSuggestionSaving||document.getElementById('note-save-btn').disabled)return;
                 noteSuggestionSaving=true;document.getElementById('note-save-btn').disabled=true;document.getElementById('note-cancel-btn').disabled=true;renderNoteSuggestions();
                 try{
-                    const values=InventoryNoteSuggestions.dismiss(state,suggestion.template?'official-template:'+suggestion.templateId:note);
+                    const values=InventoryNoteSuggestions.dismiss(state,spec?specKey(note):suggestion.template?'official-template:'+suggestion.templateId:note);
                     await photoDB.setItem('appData','mainState',InventoryData.clean({...state,dismissedNoteSuggestions:values}));
                     state.dismissedNoteSuggestions=values;
                     showToast('Sugerencia eliminada. Las notas guardadas se conservan.','success');
@@ -906,10 +908,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             row.append(button,remove);box.append(row);
         }
     }
-    document.getElementById('note-textarea').oninput=()=>{updateNoteDescription();noteSuggestionQuery=document.getElementById('note-textarea').value;renderNoteSuggestions();};
-    window.showNoteModal=c=>{noteSuggestionQuery='';noteEditingArchived=document.querySelector('.tab-btn.active')?.dataset.tab==='notas'&&!!window.viewArchivedNotes;const draft=drafts.notes[c],record=typeof draft==='string'?{description1:draft.slice(0,80),description2:draft.slice(80,226),legacyOriginal:draft.length>226?draft:''}:draft||InventoryNotes.get(state,c,noteEditingArchived);fillNoteForm(record,InventoryNotes.item(state,c));document.getElementById('note-draft-status').textContent=draft?'Borrador recuperado de este bien':'';document.getElementById('note-save-btn').dataset.c=c;renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show');};
+    for(const id of ['note-textarea','note-description2','note-marca','note-modelo','note-serie']){const input=document.getElementById(id);input.addEventListener('focus',()=>{noteSuggestionField=id;noteSuggestionQuery=input.value;renderNoteSuggestions();});input.addEventListener('input',()=>{noteSuggestionField=id;updateNoteDescription();noteSuggestionQuery=input.value;renderNoteSuggestions();});}
+
+    window.showNoteModal=c=>{noteSuggestionField='note-textarea';noteSuggestionQuery='';noteEditingArchived=document.querySelector('.tab-btn.active')?.dataset.tab==='notas'&&!!window.viewArchivedNotes;const draft=drafts.notes[c],record=typeof draft==='string'?{description1:draft.slice(0,80),description2:draft.slice(80,226),legacyOriginal:draft.length>226?draft:''}:draft||InventoryNotes.get(state,c,noteEditingArchived);fillNoteForm(record,InventoryNotes.item(state,c));document.getElementById('note-draft-status').textContent=draft?'Borrador recuperado de este bien':'';document.getElementById('note-save-btn').dataset.c=c;renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show');};
     document.getElementById('note-save-btn').onclick=async e=>{const button=e.currentTarget,key=button.dataset.c,keys=key==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[key];button.disabled=true;
-        try{const values=noteFormValues(),next=InventoryNotes.save(state,keys,values,noteEditingArchived);next.officialNoteDescriptions=InventoryNoteSuggestions.remember(state,drafts.officialDescriptions?.[InventoryNoteSuggestions.key([values.description1,values.description2].filter(Boolean).join(' '))]);await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot('Guardar descripción y datos');state=next;delete drafts.notes[key];await persistDrafts();filterAndRenderInventory();renderNotasTab();document.getElementById('notes-modal').classList.remove('show');document.getElementById('item-detail-view-modal').classList.remove('show');document.getElementById('adicional-detail-view-modal').classList.remove('show');renderAdicionales();showToast('Nota guardada en este equipo','success');focusSearch();}
+        try{const values=noteFormValues(),next=InventoryNotes.save(state,keys,values,noteEditingArchived);next.officialNoteDescriptions=InventoryNoteSuggestions.remember(state,drafts.officialDescriptions?.[InventoryNoteSuggestions.key([values.description1,values.description2].filter(Boolean).join(' '))]);await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot('Guardar descripción y datos');state=next;delete drafts.notes[key];await persistDrafts();filterAndRenderInventory();renderNotasTab();document.getElementById('notes-modal').classList.remove('show');renderAdicionales();const invDetail=document.getElementById('item-detail-view-modal'),adDetail=document.getElementById('adicional-detail-view-modal');if(invDetail.classList.contains('show')){showInvDetail(key);document.getElementById('detail-btn-ubicar').focus({preventScroll:true});}else if(adDetail.classList.contains('show')){showAdicDetail(document.getElementById('ad-det-foto-btn').dataset.id);document.getElementById('ad-det-edit-btn').focus({preventScroll:true});}else focusSearch();showToast('Nota guardada en este equipo','success');}
         catch(error){showToast('No se pudo guardar: '+error.message,'error');}finally{button.disabled=false;}
     };
 
@@ -1074,15 +1077,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('qr-modal').classList.remove('show');
         if (html5QrCode?.isScanning) await html5QrCode.stop().catch(() => {});
     }
-    async function startCodeScanner(onRead) {
+    async function startCodeScanner(onRead,serial=false) {
         if (scannerStarting || html5QrCode?.isScanning) return;
         const session = ++scanSession;
         scannerStarting = true;
-        document.getElementById('qr-modal').classList.add('show');
+        document.getElementById('qr-modal').classList.add('show');document.getElementById('qr-scan-hint').textContent=serial?'Centra el QR o código de barras de la serie dentro del recuadro. No reconoce texto impreso.':'Centra el QR o código de barras.';
         if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
         let detected = false;
         try {
-            await InventoryCamera.use(camera=>html5QrCode.start(camera, { fps:10 }, async text => {
+            await InventoryCamera.use(camera=>html5QrCode.start(camera, { fps:10,...(serial?{qrbox:(width,height)=>({width:Math.max(1,Math.floor(Math.min(width*.9,340))),height:Math.max(1,Math.floor(Math.min(height*.55,130)))})}:{}) }, async text => {
                 if (detected || session !== scanSession) return;
                 detected = true;
                 await closeCodeScanner();
@@ -1100,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     for (const prefix of ['ad','edit-ad']) document.getElementById(prefix+'-scan-serie').onclick = () => startCodeScanner(text => {
         const input=document.getElementById(prefix+'-serie');input.value=text;
         input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));input.focus();
-    });
+    },true);
 
 
     // --- PESTAÑA REPORTES OPTIMIZADA CON ÁLBUM ---

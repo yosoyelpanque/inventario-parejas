@@ -332,3 +332,16 @@ body:has(#users-tab.active) .sticky-header{padding-bottom:0}
 
 /* Keep the photographic report logo inside the printable header. */
 @media print { .print-album-header img { width: 110px; height: 65px; max-width: 110px; max-height: 65px; object-fit: contain; object-position: center; left: 5px; bottom: 10px; } }
+
+/* Fixed asset context and note actions, with only the editor body scrolling. */
+.asset-dialog header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}
+.asset-header-title{font-size:21px;font-weight:800;min-width:0;line-height:1.25}
+.asset-header-key{display:block;font-size:15px;margin-top:4px;overflow-wrap:anywhere}
+.asset-header-key strong{font-family:monospace;font-size:20px}
+.asset-dialog header .located-warning{grid-column:1/-1;padding:6px 0;border:0;background:transparent;font-size:13px}
+.asset-dialog header:has(.located-warning:not([hidden])){background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+#notes-modal>.note-editor-dialog{display:flex;flex-direction:column;padding:0;overflow:hidden;max-height:92dvh}
+.note-editor-dialog>header{flex:none;padding:16px 20px;border-bottom:1px solid #e2e8f0}
+.note-editor-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 20px 16px;scroll-padding:16px}
+.note-editor-actions{flex:none;display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;border-top:1px solid #e2e8f0;background:white}
+@media(max-width:600px){.asset-header-title{font-size:17px}.asset-header-key{font-size:12px}.asset-header-key strong{font-size:17px}.note-editor-dialog>header{padding:12px 14px}.note-editor-dialog>header h3{font-size:19px}.note-editor-body{padding:0 14px 12px}.note-editor-actions{padding:10px 14px}.note-editor-actions button{flex:1;padding:10px!important;font-size:15px!important}}
