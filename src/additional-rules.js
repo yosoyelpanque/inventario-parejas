@@ -14,7 +14,7 @@
    if(item.claveAsignada&&item.claveAsignada!==key)changes.push([item.claveAsignada,key]);
    item.claveAsignada=key;item.claveAutogenerada=true;
   });
-  for(const field of ['notes','archivedNotes'])if(state[field]){
+  for(const field of ['notes','archivedNotes','noteDetails','archivedNoteDetails'])if(state[field]){
    const old={...state[field]};for(const [from] of changes)delete state[field][from];
    for(const [from,to] of changes)if(old[from])state[field][to]=old[from];
   }
@@ -29,6 +29,7 @@
   const user=users[0],location=adic.ubicacionEspecifica;
   if(!location||!(user.locations||[user.locationWithId]).includes(location))throw Error('La ubicación del adicional ya no pertenece al resguardante');
   Object.assign(item,{UBICADO:'SI',RE_ETIQUETADO:'SI','NOMBRE DE USUARIO':user.name,ubicacionEspecifica:location,...(root.InventoryTeam || require('./team.js')).attribution(state),areaIncorrecta:item.areaOriginal!==user.area});
+  const review=root.InventoryNotes||(typeof module!=='undefined'?require('./structured-notes.js'):null);review?.normalizeItem(item,true);
   const note=['Adicional vinculado: '+(adic.claveAsignada||'Sin clave'),'Descripción: '+(adic.descripcion||'Sin dato'),'Marca: '+(adic.marca||'Sin dato'),'Modelo: '+(adic.modelo||'Sin dato'),'Serie: '+(adic.serie||'Sin dato')].join(' | ');
   next.notes=next.notes||{};next.notes[key]=[next.notes[key],note].filter(Boolean).join('\n');
   next.additionalItems=next.additionalItems.filter(i=>i.id!==id);

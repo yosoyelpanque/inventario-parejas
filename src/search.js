@@ -4,8 +4,8 @@
  function matches(query,...values){const text=normalize(values.join(' '));return normalize(query).split(/\s+/).every(word=>text.includes(word));}
  function notes(state,archived,query){
   const source=archived?state.archivedNotes:state.notes;
-  const items=new Map(state.inventory.map(item=>[String(item['CLAVE UNICA']),item]));
-  return Object.keys(source||{}).filter(key=>{const item=items.get(key);return matches(query,key,source[key],item?.DESCRIPCION,item?.['NOMBRE DE USUARIO'],item?.SERIE);});
+  const items=new Map([...state.inventory.map(item=>[String(item['CLAVE UNICA']),item]),...(state.additionalItems||[]).map(item=>[String(item.claveAsignada||'ADICIONAL:'+item.id),item])]);
+  return Object.keys(source||{}).filter(key=>{const item=items.get(key);return matches(query,key,source[key],item?.DESCRIPCION,item?.descripcion,item?.['NOMBRE DE USUARIO'],item?.usuario,item?.SERIE,item?.serie);});
  }
  function reports(state,types,query,areaNames){
   const areas=[...new Set([...state.inventory.map(i=>String(i.areaOriginal||'')),...state.resguardantes.map(u=>String(u.area||''))])].filter(Boolean).sort();

@@ -7,6 +7,7 @@
   if(!keys.length||keys.some(key=>!state.inventory.some(i=>i['CLAVE UNICA']===key)))throw Error('No se encontraron todos los bienes seleccionados.');
   const next=structuredClone(state),team=root.InventoryTeam||(typeof module!=='undefined'?require('./team.js'):null);
   for(const item of next.inventory)if(keys.includes(item['CLAVE UNICA']))Object.assign(item,{UBICADO:'SI',RE_ETIQUETADO:retag?'SI':'NO','NOMBRE DE USUARIO':user.name,ubicacionEspecifica:location,areaIncorrecta:String(item.areaOriginal)!==String(user.area),...team.attribution(state)});
+  const notes=root.InventoryNotes||(typeof module!=='undefined'?require('./structured-notes.js'):null);for(const i of next.inventory)if(keys.includes(i['CLAVE UNICA']))notes.normalizeItem(i,true);
   return next;
  }
  root.InventoryAssignment={owner,review,assign};if(typeof module!=='undefined')module.exports=root.InventoryAssignment;

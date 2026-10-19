@@ -319,3 +319,13 @@
 #main-content-area:has(#users-tab.active){margin-top:4px;padding-top:4px;padding-bottom:12px}
 body:has(#users-tab.active) .sticky-header{padding-bottom:0}
 #users-tab .capture-panel #new-user-locations-list{max-height:100px}
+
+.located-warning{margin:0;padding:10px 18px;background:#FEE2E2;color:#B91C1C;font-size:14px;font-weight:700;flex:none;border-bottom:1px solid #FCA5A5}
+.located-warning[hidden]{display:none}
+#notes-modal>div{max-height:92dvh;overflow:auto}
+#notes-modal label{display:block;font-size:14px;font-weight:600;margin-top:8px}
+#notes-modal textarea{min-height:64px;font-size:16px}
+#note-description-count,.note-created-date{font-size:12px;color:#64748b;margin-top:5px}
+#note-legacy-text{white-space:pre-wrap;font-size:13px}
+@media(max-width:600px){#toggle-header-icon::before{content:'\f078';font-size:10px}#toggle-header-icon.fa-plus::before{content:'\f077'}#tabs-container #toggle-header-btn{background:transparent!important;border:0;box-shadow:none;color:#e2e8f0}}
+#notes-modal [hidden]{display:none!important}

@@ -25,7 +25,7 @@
  }
  function moveNotes(state,keys,archive){
   const next=structuredClone(state),source=archive?'notes':'archivedNotes',target=archive?'archivedNotes':'notes';next[source]={...next[source]};next[target]={...next[target]};let count=0;
-  for(const key of new Set(keys)){if(!Object.hasOwn(next[source],key))continue;const text=next[source][key],previous=next[target][key];next[target][key]=previous&&previous!==text?previous+'\n\n'+text:text;delete next[source][key];count++;}
+  for(const key of new Set(keys)){if(!Object.hasOwn(next[source],key))continue;const text=next[source][key],previous=next[target][key];next[target][key]=previous&&previous!==text?previous+'\n\n'+text:text;const sourceMeta=archive?'noteDetails':'archivedNoteDetails',targetMeta=archive?'archivedNoteDetails':'noteDetails';next[sourceMeta]={...next[sourceMeta]};next[targetMeta]={...next[targetMeta]};if(next[sourceMeta][key]){const record=structuredClone(next[sourceMeta][key]);if(previous&&previous!==text)record.legacyOriginal=next[target][key];next[targetMeta][key]=record;}else if(next[targetMeta][key]&&previous!==text)next[targetMeta][key]={...next[targetMeta][key],legacyOriginal:next[target][key]};delete next[sourceMeta][key];delete next[source][key];count++;}
   return {next,count};
  }
  root.InventoryOperations={transfer,moveNotes};if(typeof module!=='undefined')module.exports={transfer,moveNotes};

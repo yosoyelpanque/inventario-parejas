@@ -37,6 +37,7 @@
    next[field]=next[field]||[];for(const i of source[field]||[]){const index=next[field].findIndex(v=>getKey(v)===getKey(i));if(index<0)next[field].push(i);else conflict(field+' · '+getKey(i),next[field],index,i);}
   }
   for(const field of ['notes','archivedNotes']){next[field]={...next[field]};for(const [k,v] of Object.entries(source[field]||{})){const old=next[field][k];if(!old)next[field][k]=v;else if(old!==v&&!old.includes(v))next[field][k]=old+'\n\n'+v;}}
+  for(const field of ['noteDetails','archivedNoteDetails']){next[field]={...next[field]};for(const [key,value] of Object.entries(source[field]||{})){if(!next[field][key])next[field][key]=structuredClone(value);else if(!same(next[field][key],value))conflict(field+' · '+key,next[field],key,value);}}
   for(const field of ['areaNames']){next[field]={...next[field]};for(const [k,v] of Object.entries(source[field]||{})){if(next[field][k]===undefined)next[field][k]=v;else conflict(field+' · '+k,next[field],k,v);}}
   next.suggestedNames=[...new Set([...(next.suggestedNames||[]),...(source.suggestedNames||[])])];
   return {next,conflicts,idMap};

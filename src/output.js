@@ -36,7 +36,7 @@
     }
   }
   async function excel(book, name) {
-    return save(new Blob([XLSX.write(book, { bookType: 'xlsx', type: 'array' })],
+    return save(new Blob([await InventoryExcelColors.encode(book)],
       { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
   }
   async function print() { if (native) await getPlugin().print(); else window.print(); }

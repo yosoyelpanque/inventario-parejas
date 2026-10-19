@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('undo-btn').classList.toggle('hidden',!stateHistory.length);
     }
     function saveSnapshot(label='Cambio en los datos') {
-        const snap=structuredClone({inventory:state.inventory,additionalItems:state.additionalItems,resguardantes:state.resguardantes,notes:state.notes,archivedNotes:state.archivedNotes,locations:state.locations,activeResguardante:state.activeResguardante,locationPhotos:state.locationPhotos,perfilesMagicos:state.perfilesMagicos,areaNames:state.areaNames,responsablesList:state.responsablesList,suggestedNames:state.suggestedNames,areas:state.areas||[],loadedListings:state.loadedListings||[]});
+        const snap=structuredClone({inventory:state.inventory,additionalItems:state.additionalItems,resguardantes:state.resguardantes,notes:state.notes,archivedNotes:state.archivedNotes,noteDetails:state.noteDetails||{},archivedNoteDetails:state.archivedNoteDetails||{},locations:state.locations,activeResguardante:state.activeResguardante,locationPhotos:state.locationPhotos,perfilesMagicos:state.perfilesMagicos,areaNames:state.areaNames,responsablesList:state.responsablesList,suggestedNames:state.suggestedNames,areas:state.areas||[],loadedListings:state.loadedListings||[]});
         stateHistory.push({snap,at:Date.now(),label});if(stateHistory.length>10)stateHistory.shift();renderSessionHistory();photoDB.setItem('appData','changeHistory',structuredClone(stateHistory)).catch(()=>showToast('No se pudo guardar el historial. Genera un respaldo ZIP.','error'));
     }
     document.getElementById('undo-btn').onclick = async () => {
@@ -76,6 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const photoDB = window.InventoryStorage;
 
+    function locatedWarning(id,name){const box=document.getElementById(id);box.hidden=!name;box.textContent=name?'Este bien ya está ubicado con '+name+'. Puedes continuar editando sus datos.':'';}
     const photoViewRequests=new WeakMap();
     function photoDescription(type,id){const item=type==='inventory'?state.inventory.find(i=>i['CLAVE UNICA']===id):type==='additional'?state.additionalItems.find(i=>i.id===id):null;return item?.DESCRIPCION||item?.DESCRripcion||item?.descripcion||'';}
     function photoKey(type,id){return type==='inventory'?String(id):(type==='additional'?state.additionalItems.find(item=>item.id===id)?.claveAsignada||'':'');}
@@ -140,12 +141,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('note-textarea').addEventListener('input',()=>{
         const key=document.getElementById('note-save-btn').dataset.c;if(!key||key==='BULK')return;
-        drafts.notes[key]=document.getElementById('note-textarea').value;
+        drafts.notes[key]=noteFormValues();
         persistDrafts();document.getElementById('note-draft-status').textContent='Borrador local: se recuperará al abrir este bien.';
     });
     document.getElementById('discard-note-draft').onclick=()=>{
         const key=document.getElementById('note-save-btn').dataset.c;
-        delete drafts.notes[key];persistDrafts();document.getElementById('note-textarea').value=state.notes[key]||'';
+        delete drafts.notes[key];persistDrafts();fillNoteForm(InventoryNotes.get(state,key,noteEditingArchived),InventoryNotes.item(state,key));
         document.getElementById('note-draft-status').textContent='';renderNoteSuggestions();
     };
 
@@ -253,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     function readAdditional(prefix,existing) {
         const $=id=>document.getElementById(prefix+'-'+id),type=$('type').value;
-        const key=$('clave').value.trim(),serial=$('serie').value.trim(),description=$('desc').value.trim();
+        const key=$('clave').value.trim(),serial=InventoryNotes.missing($('serie').value)?'':$('serie').value.trim(),description=$('desc').value.trim();
         if(!description)throw Error('La descripción es obligatoria');
         if(type==='external'&&!key)throw Error('Escribe la clave del adicional de otra área');
         if(key&&state.additionalItems.some(i=>i.id!==existing?.id&&InventoryAdditional.norm(i.claveAsignada)===InventoryAdditional.norm(key)))throw Error('La clave ya existe en adicionales');
@@ -270,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try{
             const next=structuredClone(state);
             if(editing)next.additionalItems=next.additionalItems.map(i=>i.id===item.id?item:i);else next.additionalItems.unshift(item);
-            InventoryAdditional.renumber(next);
+            InventoryAdditional.renumber(next);InventoryNotes.normalizeState(next);
             await photoDB.setItem('appData','mainState',InventoryData.clean(next));
             saveSnapshot(editing?'Editar bien adicional':'Registrar bien adicional');state=next;updateDatalists();renderAdicionales();updateActiveUserLocationSelect();filterAndRenderInventory();
             document.getElementById('edit-adicional-modal').classList.remove('show');
@@ -683,7 +684,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('nav-ubicado-btn').onclick = ()=>doAction('ubicar'); document.getElementById('nav-reetiquetar-btn').onclick=()=>doAction('reetiquetar'); document.getElementById('nav-desubicar-btn').onclick = ()=>doAction('desubicar');
 
-    document.getElementById('nav-bulk-note-btn').onclick = () => { noteSuggestionQuery=''; const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para nota', 'warning'); document.getElementById('note-textarea').value = ''; document.getElementById('note-save-btn').dataset.c = 'BULK';document.getElementById('note-draft-status').textContent='Nota masiva: este borrador no se conserva al cerrar la app.'; renderNoteSuggestions(); document.getElementById('notes-modal').classList.add('show'); setTimeout(() => document.getElementById('note-textarea').focus(), 100); };
+    document.getElementById('nav-bulk-note-btn').onclick=()=>{if(!document.querySelector('.inv-cb:checked'))return showToast('Selecciona bienes para nota','warning');noteSuggestionQuery='';noteEditingArchived=false;fillNoteForm({},null,true);document.getElementById('note-save-btn').dataset.c='BULK';document.getElementById('note-draft-status').textContent='Se aplicará a los bienes seleccionados. Los datos vacíos de marca, modelo y serie conservarán el valor de cada bien.';renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show');};
+
     document.getElementById('nav-bulk-photo-btn').onclick = () => { if(photoSaving)return;photoSaveStatus.hidden=true;const cbs = document.querySelectorAll('.inv-cb:checked'); if(!cbs.length) return showToast('Selecciona bienes para foto', 'warning'); document.getElementById('photo-input').dataset.t = 'inventory-bulk'; document.getElementById('photo-input').dataset.bulkIds = Array.from(cbs).map(cb => cb.closest('tr').dataset.clave).join(','); document.getElementById('photo-view-container').classList.add('hidden'); document.getElementById('photo-upload-container').classList.add('hidden'); document.getElementById('camera-view-container').classList.remove('hidden'); document.getElementById('camera-view-container').classList.add('flex'); document.getElementById('photo-modal-title').textContent = `Foto Masiva (${cbs.length} bienes)`; document.getElementById('capture-photo-btn').disabled = false; document.getElementById('capture-photo-btn').innerHTML = '<i class="fa-solid fa-camera-retro mr-2"></i> Capturar a Todos'; startCamera(); document.getElementById('photo-modal').classList.add('show'); };
     document.getElementById('ad-bulk-autofill-btn').onclick = () => { if (!state.additionalItems || state.additionalItems.length === 0) return showToast('No hay adicionales.', 'warning'); saveSnapshot(); let updatedCount = 0; state.additionalItems.forEach(item => { if (item.serie) { const perfil = matchMagicProfile(String(item.serie).toUpperCase().trim()); if (perfil) { let changed = false; if (item.descripcion !== perfil.desc) { item.descripcion = perfil.desc; changed = true; } if (item.marca !== perfil.marca) { item.marca = perfil.marca; changed = true; } if (item.modelo !== perfil.modelo) { item.modelo = perfil.modelo; changed = true; } if (item.posesion !== (perfil.posesion||'Cámara')) { item.posesion = perfil.posesion||'Cámara'; if(item.posesion === 'Arrendamiento') item.numContrato = 'LXVIDGAJ- 070/2024'; changed = true; } if (changed) updatedCount++; } } }); if (updatedCount > 0) { recalculateAdicionalesKeys(); saveState(); renderAdicionales(); filterAndRenderInventory(); showToast(`Autocompletados ${updatedCount} bienes.`, 'success'); } else showToast('Sin coincidencias.', 'info'); };
 
@@ -810,7 +812,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('ad-det-photo').classList.add('hidden'); document.getElementById('ad-delete-photo-btn').classList.add('hidden'); document.getElementById('ad-det-no-photo').classList.remove('hidden');
         clearPhotoView(document.getElementById('ad-det-photo'));
         if(state.additionalPhotos[id])loadPhotoView('ad-det-photo','additional',id,()=>{document.getElementById('ad-det-photo').classList.remove('hidden');document.getElementById('ad-delete-photo-btn').classList.remove('hidden');document.getElementById('ad-det-no-photo').classList.add('hidden');});
-        document.getElementById('adicional-detail-view-modal').classList.add('show');
+        locatedWarning('additional-located-warning',i.usuario||'');document.getElementById('adicional-detail-view-modal').classList.add('show');
     };
 
     window.editAdic=id=>{
@@ -863,13 +865,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('detail-btn-desubicar').onclick = () => {
             showConfirm('Quitar asignación', '¿Seguro que deseas quitar este bien del resguardo actual?', () => { saveSnapshot(); i.UBICADO='NO'; i.RE_ETIQUETADO='NO'; i['NOMBRE DE USUARIO']=''; i.ubicacionEspecifica=''; Object.assign(i, InventoryTeam.clear()); saveState(); renderDashboard(); filterAndRenderInventory(); updateActiveUserLocationSelect(); showToast('Asignación retirada'); showInvDetail(c); });
         };
-        document.getElementById('detail-btn-nota').onclick = () => showNoteModal(c); document.getElementById('detail-btn-foto').onclick = () => showPhoto('inventory', c); document.getElementById('item-detail-view-modal').classList.add('show');
+        document.getElementById('detail-btn-nota').onclick = () => showNoteModal(c); document.getElementById('detail-btn-foto').onclick = () => showPhoto('inventory', c); locatedWarning('detail-located-warning',i.UBICADO==='SI'?i['NOMBRE DE USUARIO']||'un resguardante sin nombre':'');document.getElementById('item-detail-view-modal').classList.add('show');
     };
 
+    const additionalNoteButton=document.createElement('button');additionalNoteButton.type='button';additionalNoteButton.id='ad-det-note-btn';additionalNoteButton.dataset.action='note';additionalNoteButton.textContent='Descripción / Nota';document.getElementById('ad-det-foto-btn').before(additionalNoteButton);additionalNoteButton.onclick=()=>{const id=document.getElementById('ad-det-foto-btn').dataset.id,i=state.additionalItems.find(i=>i.id===id);if(i)showNoteModal(String(i.claveAsignada||'ADICIONAL:'+i.id));};
+    let noteEditingArchived=false,noteLegacyOriginal='',noteBulk=false;
+    function noteFormValues(){return {description1:document.getElementById('note-textarea').value,description2:document.getElementById('note-description2').value,...Object.fromEntries(['marca','modelo','serie'].map(n=>[n,noteBulk&&!document.getElementById('note-'+n).value.trim()?null:document.getElementById('note-'+n).value])),legacyOriginal:noteLegacyOriginal};}
+    function updateNoteDescription(){const first=document.getElementById('note-textarea'),second=document.getElementById('note-description2');document.getElementById('note-description2-label').hidden=first.value.length<80&&!second.value;document.getElementById('note-description-count').textContent=first.value.length+'/80 · Descripción 2: '+second.value.length+'/146';}
+    function applyNoteDescription(text){const value=InventoryNotes.plain(text);document.getElementById('note-textarea').value=value.slice(0,80);document.getElementById('note-description2').value=value.slice(80,226);if(value.length>226)noteLegacyOriginal=text;document.getElementById('note-legacy-text').textContent=noteLegacyOriginal;document.getElementById('note-legacy').hidden=!noteLegacyOriginal;updateNoteDescription();}
+    function fillNoteForm(record={},item,bulk=false){noteBulk=bulk;noteLegacyOriginal=record.legacyOriginal||'';document.getElementById('note-textarea').value=InventoryNotes.plain(record.description1||'');document.getElementById('note-description2').value=InventoryNotes.plain(record.description2||'');for(const n of ['marca','modelo','serie']){const input=document.getElementById('note-'+n);input.value=bulk?'':item?.[InventoryNotes.field(item,n)]??record[n]??'';input.placeholder=bulk?'Conservar el valor de cada bien':'SIN '+n.toUpperCase();}document.getElementById('note-legacy-text').textContent=noteLegacyOriginal;document.getElementById('note-legacy').hidden=!noteLegacyOriginal;updateNoteDescription();}
+    for(const id of ['note-description2','note-marca','note-modelo','note-serie'])document.getElementById(id).addEventListener('input',()=>{updateNoteDescription();const key=document.getElementById('note-save-btn').dataset.c;if(key&&key!=='BULK'){drafts.notes[key]=noteFormValues();persistDrafts();}});
+    document.getElementById('note-textarea').addEventListener('paste',event=>{const input=event.currentTarget,text=event.clipboardData?.getData('text');if(!text)return;const value=input.value.slice(0,input.selectionStart)+text+input.value.slice(input.selectionEnd);if(value.length<=80)return;event.preventDefault();applyNoteDescription(value+document.getElementById('note-description2').value);input.dispatchEvent(new Event('input',{bubbles:true}));});
+    for(const id of ['note-textarea','note-description2','note-marca','note-modelo'])document.getElementById(id).addEventListener('blur',e=>{e.target.value=InventoryNotes.plain(e.target.value);updateNoteDescription();});
     let noteSuggestionSaving=false,noteSuggestionQuery='';
     function renderNoteSuggestions() {
         const input=document.getElementById('note-textarea'),box=document.getElementById('note-suggestions');
-        const target=document.getElementById('note-save-btn').dataset.c,keys=target==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[target],context=keys.map(key=>state.inventory.find(i=>i['CLAVE UNICA']===key)||state.additionalItems.find(i=>i.claveAsignada===key)).map(i=>i?.DESCRIPCION||i?.DESCRripcion||i?.descripcion||'');
+        const target=document.getElementById('note-save-btn').dataset.c,keys=target==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[target],context=keys.map(key=>InventoryNotes.item(state,key)).map(i=>i?.DESCRIPCION||i?.DESCRripcion||i?.descripcion||'');
         const saved=InventoryNoteSuggestions.entries(state,noteSuggestionQuery,context),templates=InventoryNoteSuggestions.templates(state,noteSuggestionQuery,context);
         const suggestions=[...saved.map(r=>({...r,official:!!r.templateId})),...templates.map(t=>({text:t.preview,templateId:t.id,official:true,template:true}))];
         box.replaceChildren();if(!suggestions.length)return;
@@ -878,7 +889,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const note=suggestion.text;
             const row=document.createElement('div'),button=document.createElement('button'),remove=document.createElement('button');
             row.className='note-suggestion-row';button.type=remove.type='button';button.dataset.action='note';button.className='note-suggestion';button.textContent=note;if(suggestion.official){const badge=document.createElement('span');badge.className='note-official-badge';badge.textContent='✓ '+(suggestion.template?'Oficial':'De plantilla oficial');button.prepend(badge);}
-            button.onclick=()=>{if(suggestion.template){InventoryOfficialNoteEditor.open(suggestion.templateId,text=>{drafts.officialDescriptions??={};drafts.officialDescriptions[InventoryNoteSuggestions.key(text)]={text,templateId:suggestion.templateId};input.value=text;input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();});return;}input.value=note;input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();};
+            button.onclick=()=>{if(suggestion.template){InventoryOfficialNoteEditor.open(suggestion.templateId,text=>{drafts.officialDescriptions??={};drafts.officialDescriptions[InventoryNoteSuggestions.key(text)]={text,templateId:suggestion.templateId};applyNoteDescription(text);input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();});return;}applyNoteDescription(note);input.dispatchEvent(new Event('input',{bubbles:true}));box.replaceChildren();input.focus();};
             remove.textContent='×';remove.className='note-suggestion-remove';remove.dataset.action='danger';remove.disabled=noteSuggestionSaving;
             remove.title='Eliminar sugerencia';remove.setAttribute('aria-label','Eliminar sugerencia de nota: '+note);
             remove.onclick=async()=>{
@@ -895,20 +906,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             row.append(button,remove);box.append(row);
         }
     }
-    document.getElementById('note-textarea').oninput=()=>{noteSuggestionQuery=document.getElementById('note-textarea').value;renderNoteSuggestions();};
-    window.showNoteModal = c => { noteSuggestionQuery=''; document.getElementById('note-textarea').value = drafts.notes[c]??state.notes[c]??'';document.getElementById('note-draft-status').textContent=Object.hasOwn(drafts.notes,c)?'Borrador recuperado de este bien':''; document.getElementById('note-save-btn').dataset.c = c; renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show'); setTimeout(() => document.getElementById('note-textarea').focus(), 100); };
-    document.getElementById('note-save-btn').onclick = async e => {
-        const button=e.currentTarget,targetC=button.dataset.c,noteText=document.getElementById('note-textarea').value;
-        const keys=targetC==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[targetC];
-        const officialNoteDescriptions=InventoryNoteSuggestions.remember(state,drafts.officialDescriptions?.[InventoryNoteSuggestions.key(noteText)]);
-        const notes={...state.notes};for(const key of keys){if(noteText.trim())notes[key]=noteText;else delete notes[key];}
-        button.disabled=true;
-        try {
-            await photoDB.setItem('appData','mainState',InventoryData.clean({...state,notes,officialNoteDescriptions}));
-            delete drafts.notes[targetC];await persistDrafts();saveSnapshot('Guardar nota');state.notes=notes;state.officialNoteDescriptions=officialNoteDescriptions;filterAndRenderInventory();renderNotasTab();document.getElementById('notes-modal').classList.remove('show');
-            showToast('Nota guardada en este equipo','success');focusSearch();
-        } catch {showToast('No se pudo guardar la nota. El texto sigue aquí; vuelve a intentarlo.','error');}
-        finally {button.disabled=false;}
+    document.getElementById('note-textarea').oninput=()=>{updateNoteDescription();noteSuggestionQuery=document.getElementById('note-textarea').value;renderNoteSuggestions();};
+    window.showNoteModal=c=>{noteSuggestionQuery='';noteEditingArchived=document.querySelector('.tab-btn.active')?.dataset.tab==='notas'&&!!window.viewArchivedNotes;const draft=drafts.notes[c],record=typeof draft==='string'?{description1:draft.slice(0,80),description2:draft.slice(80,226),legacyOriginal:draft.length>226?draft:''}:draft||InventoryNotes.get(state,c,noteEditingArchived);fillNoteForm(record,InventoryNotes.item(state,c));document.getElementById('note-draft-status').textContent=draft?'Borrador recuperado de este bien':'';document.getElementById('note-save-btn').dataset.c=c;renderNoteSuggestions();document.getElementById('notes-modal').classList.add('show');};
+    document.getElementById('note-save-btn').onclick=async e=>{const button=e.currentTarget,key=button.dataset.c,keys=key==='BULK'?[...document.querySelectorAll('.inv-cb:checked')].map(cb=>cb.closest('tr').dataset.clave):[key];button.disabled=true;
+        try{const values=noteFormValues(),next=InventoryNotes.save(state,keys,values,noteEditingArchived);next.officialNoteDescriptions=InventoryNoteSuggestions.remember(state,drafts.officialDescriptions?.[InventoryNoteSuggestions.key([values.description1,values.description2].filter(Boolean).join(' '))]);await photoDB.setItem('appData','mainState',InventoryData.clean(next));saveSnapshot('Guardar descripción y datos');state=next;delete drafts.notes[key];await persistDrafts();filterAndRenderInventory();renderNotasTab();document.getElementById('notes-modal').classList.remove('show');document.getElementById('item-detail-view-modal').classList.remove('show');document.getElementById('adicional-detail-view-modal').classList.remove('show');renderAdicionales();showToast('Nota guardada en este equipo','success');focusSearch();}
+        catch(error){showToast('No se pudo guardar: '+error.message,'error');}finally{button.disabled=false;}
     };
 
     let retagArchived=false, retagLimit=30, retagSaving=false;
@@ -968,7 +970,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function filteredNoteKeys(){
         const query=document.querySelector('.tab-btn.active')?.dataset.tab==='notas'?document.getElementById('global-search-input').value:'';
-        return InventorySearch.notes(state,window.viewArchivedNotes,query);
+        return InventoryNotes.filter(state,InventorySearch.notes(state,window.viewArchivedNotes,query),window.viewArchivedNotes,document.getElementById('notes-date-from').value,document.getElementById('notes-date-to').value,document.getElementById('notes-date-order').value);
     }
     window.renderNotasTab = function() {
         renderRetagList();
@@ -990,14 +992,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const paginatedKeys = keys.slice((window.currentNotesPage - 1) * notesPerPage, window.currentNotesPage * notesPerPage);
 
         container.innerHTML = paginatedKeys.map(clave => {
-            const item = state.inventory.find(i => i['CLAVE UNICA'] === clave); const desc = item ? (item.DESCRIPCION || item.DESCRripcion) : 'Bien No Encontrado'; const texto = targetObj[clave];
-            return `<div class="bg-white p-4 rounded-xl border shadow-sm flex flex-col h-48"><div class="flex justify-between items-start mb-2 border-b pb-2 shrink-0"><div class="min-w-0 pr-2"><label><input type="checkbox" class="note-select" data-key="${escapeHTML(clave)}" aria-label="Seleccionar nota ${escapeHTML(clave)}" ${selectedNotes.has(clave)?'checked':''}> <span class="font-black text-indigo-900">${escapeHTML(clave)}</span></label><p class="text-xs font-bold text-gray-500 truncate" title="${escapeHTML(desc)}">${escapeHTML(desc)}</p></div><div class="flex gap-2 shrink-0"><button data-action="note" class="w-8 h-8 rounded-md" onclick="showNoteModal(${inlineValue(clave)})"><i class="fa-solid fa-pen"></i></button>${window.viewArchivedNotes ? `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, false)"><i class="fa-solid fa-box-open"></i></button>` : `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, true)"><i class="fa-solid fa-box-archive"></i></button>`}</div></div><div class="text-sm text-gray-700 font-medium overflow-y-auto whitespace-pre-wrap flex-grow">${escapeHTML(texto)}</div></div>`;
+            const item = InventoryNotes.item(state,clave); const desc = item ? (item.DESCRIPCION || item.DESCRripcion||item.descripcion) : 'Bien No Encontrado'; const texto = targetObj[clave];const date=InventoryNotes.get(state,clave,window.viewArchivedNotes).createdAt;const createdLabel=date?new Date(date).toLocaleString('es-MX'):'Sin fecha (nota anterior)';
+            return `<div class="bg-white p-4 rounded-xl border shadow-sm flex flex-col h-48"><div class="flex justify-between items-start mb-2 border-b pb-2 shrink-0"><div class="min-w-0 pr-2"><label><input type="checkbox" class="note-select" data-key="${escapeHTML(clave)}" aria-label="Seleccionar nota ${escapeHTML(clave)}" ${selectedNotes.has(clave)?'checked':''}> <span class="font-black text-indigo-900">${escapeHTML(clave)}</span></label><p class="text-xs font-bold text-gray-500 truncate" title="${escapeHTML(desc)}">${escapeHTML(desc)}</p></div><div class="flex gap-2 shrink-0"><button data-action="note" class="w-8 h-8 rounded-md" onclick="showNoteModal(${inlineValue(clave)})"><i class="fa-solid fa-pen"></i></button>${window.viewArchivedNotes ? `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, false)"><i class="fa-solid fa-box-open"></i></button>` : `<button data-action="edit" class="w-8 h-8 rounded-md" onclick="toggleArchiveNote(${inlineValue(clave)}, true)"><i class="fa-solid fa-box-archive"></i></button>`}</div></div><div class="text-sm text-gray-700 font-medium overflow-y-auto whitespace-pre-wrap flex-grow">${escapeHTML(texto)}<p class="note-created-date">Creación: ${escapeHTML(createdLabel)}</p></div></div>`;
         }).join('');
 
         pagContainer.innerHTML = `<button data-action="neutral" class="px-5 py-2 font-bold rounded-lg ${window.currentNotesPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'}" onclick="if(window.currentNotesPage > 1) { window.currentNotesPage--; renderNotasTab(); }">Anterior</button><span class="font-bold text-gray-600">Página ${window.currentNotesPage} de ${totalPages}</span><button data-action="neutral" class="px-5 py-2 font-bold rounded-lg ${window.currentNotesPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100'}" onclick="if(window.currentNotesPage < ${totalPages}) { window.currentNotesPage++; renderNotasTab(); }">Siguiente</button>`;
     }
 
     document.getElementById('notas-list-container').addEventListener('change',e=>{if(!e.target.matches('.note-select'))return;if(e.target.checked)selectedNotes.add(e.target.dataset.key);else selectedNotes.delete(e.target.dataset.key);renderNotasTab();});
+    for(const id of ['notes-date-from','notes-date-to','notes-date-order'])document.getElementById(id).onchange=()=>{window.currentNotesPage=1;selectedNotes.clear();renderNotasTab();};
     document.getElementById('notes-select-all').onclick=()=>{filteredNoteKeys().forEach(k=>selectedNotes.add(k));renderNotasTab();};
     document.getElementById('notes-clear-selection').onclick=()=>{selectedNotes.clear();renderNotasTab();};
     async function moveSelectedNotes(keys,toArchive){
@@ -1350,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     };
 
-    async function exportRetag(items,area){if(!items.length)return showToast('No hay bienes que coincidan con el filtro.','warning');const rows=items.map(i=>({'Clave Única':String(i['CLAVE UNICA']),'Descripción':i.DESCRIPCION||i.DESCRripcion,'Área Original':i.areaOriginal||'','Área del Usuario':InventoryAssignment.owner(state,i)?.area||'','Usuario':i['NOMBRE DE USUARIO'],'Ubicación':i.ubicacionEspecifica,'Edificio':InventoryAssignment.owner(state,i)?.locationDetails?.[i.ubicacionEspecifica]?.edificio||'N/A','Piso':InventoryAssignment.owner(state,i)?.locationDetails?.[i.ubicacionEspecifica]?.piso||'N/A',...InventoryTeam.excel(i)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Reetiquetado');try{await InventoryOutput.excel(wb,`Reetiquetado_${area==='all'?'Todas':area}_${new Date().toISOString().slice(0,10)}.xlsx`);showToast('Excel generado','success');}catch(e){showToast(e.message,'error');}}
+    async function exportRetag(items,area){if(!items.length)return showToast('No hay bienes que coincidan con el filtro.','warning');const rows=items.map(i=>({'Clave Única':String(i['CLAVE UNICA']),'Descripción':i.DESCRIPCION||i.DESCRripcion,'Área Original':i.areaOriginal||'','Área del Usuario':InventoryAssignment.owner(state,i)?.area||'','Usuario':i['NOMBRE DE USUARIO'],'Ubicación':i.ubicacionEspecifica,'Marca':i.MARCA,'Modelo':i.MODELO,'Serie':i.SERIE,...InventoryNotes.exported(state,String(i['CLAVE UNICA'])),'Edificio':InventoryAssignment.owner(state,i)?.locationDetails?.[i.ubicacionEspecifica]?.edificio||'N/A','Piso':InventoryAssignment.owner(state,i)?.locationDetails?.[i.ubicacionEspecifica]?.piso||'N/A',...InventoryTeam.excel(i)}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Reetiquetado');try{InventoryNotes.styleWorkbook(wb,state);await InventoryOutput.excel(wb,`Reetiquetado_${area==='all'?'Todas':area}_${new Date().toISOString().slice(0,10)}.xlsx`);showToast('Excel generado','success');}catch(e){showToast(e.message,'error');}}
     document.getElementById('export-reetiquetado-btn').onclick=()=>{const area=document.getElementById('retag-area').value;return exportRetag(state.inventory.filter(i=>i.RE_ETIQUETADO==='SI'&&InventoryExportScope.matches(state,i,area)),area);};
 
     // --- CONCILIADOR TOTAL ---
@@ -1473,9 +1476,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(async () => {
             try {
                 const getLoc = (i) => { const u = state.resguardantes.find(r => r.name === (i['NOMBRE DE USUARIO'] || i.usuario)); return (u && u.locationDetails && u.locationDetails[i.ubicacionEspecifica]) ? u.locationDetails[i.ubicacionEspecifica] : { edificio: 'N/A', piso: 'N/A' }; };
-                const mapRow = (i) => { const loc = getLoc(i); const isAdic = i._type === 'adic'; const c = isAdic ? i.claveAsignada : i['CLAVE UNICA']; return { 'Clave Única': c || '', 'Descripción': i.DESCRripcion || i.DESCRIPCION || i.descripcion || '', 'Marca': i.MARCA || i.marca || '', 'Modelo': i.MODELO || i.modelo || '', 'Serie': i.SERIE || i.serie || '', 'Área Original': i.areaOriginal || i.areaProcedencia || '', 'Área del Usuario': InventoryAssignment.owner(state,i)?.area || '', 'Usuario Asignado': i['NOMBRE DE USUARIO'] || i.usuario || '', 'Ubicación': i.ubicacionEspecifica || '', 'Edificio': loc.edificio || '', 'Piso': loc.piso || '', ...InventoryTeam.excel(i), 'Requiere Etiqueta': isAdic ? 'N/A' : (i.RE_ETIQUETADO === 'SI' ? 'SÍ' : 'NO'), 'Tiene Foto': (isAdic ? state.additionalPhotos[i.id] : state.photos[c]) ? 'SÍ' : 'NO', 'Nota': state.notes[c] || '' }; };
+                const mapRow = (i) => { const loc = getLoc(i); const isAdic = i._type === 'adic'; const c = isAdic ? i.claveAsignada : i['CLAVE UNICA']; const row={ 'Clave Única': c || '', 'Descripción': i.DESCRripcion || i.DESCRIPCION || i.descripcion || '', 'Marca': i.MARCA || i.marca || '', 'Modelo': i.MODELO || i.modelo || '', 'Serie': i.SERIE || i.serie || '', 'Área Original': i.areaOriginal || i.areaProcedencia || '', 'Área del Usuario': InventoryAssignment.owner(state,i)?.area || '', 'Usuario Asignado': i['NOMBRE DE USUARIO'] || i.usuario || '', 'Ubicación': i.ubicacionEspecifica || '', 'Edificio': loc.edificio || '', 'Piso': loc.piso || '', ...InventoryTeam.excel(i), 'Requiere Etiqueta': isAdic ? 'N/A' : (i.RE_ETIQUETADO === 'SI' ? 'SÍ' : 'NO'), 'Tiene Foto': (isAdic ? state.additionalPhotos[i.id] : state.photos[c]) ? 'SÍ' : 'NO', ...InventoryNotes.exported(state,String(c||'ADICIONAL:'+i.id)) };Object.defineProperty(row,'__noteKey',{value:String(c||'ADICIONAL:'+i.id)});return row; };
+                const sheetFor=rows=>{const sheet=XLSX.utils.json_to_sheet(rows);sheet['!noteKeys']=rows.map(r=>r.__noteKey);return sheet;};
                 const invRows = exportData.inventory.map(i => { return mapRow({...i,_type:'inv'}); }); const adicCamara = exportData.additionalItems.filter(i => i.posesion === 'Cámara' && i.personal !== 'Si').map(i => { return mapRow({...i,_type:'adic'}); }); const adicArrend = exportData.additionalItems.filter(i => i.posesion === 'Arrendamiento').map(i => { return mapRow({...i,_type:'adic'}); }); const adicPers = exportData.additionalItems.filter(i => i.personal === 'Si').map(i => { return mapRow({...i,_type:'adic'}); });
-                const adicGrupo=exportData.additionalItems.filter(i=>(i.tipoBien==='group'||i.posesion==='Propiedad del Grupo')).map(i=>mapRow({...i,_type:'adic'}));const wb = XLSX.utils.book_new();if(adicGrupo.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(adicGrupo),'Grupos Parlamentarios'); if(invRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invRows), "Bienes Inventario"); if(adicCamara.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicCamara), "Adicionales Cámara"); if(adicArrend.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicArrend), "Adic. Arrendamiento"); if(adicPers.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adicPers), "Bienes Personales"); await InventoryOutput.excel(wb, `Inventario_${exportArea==='all'?'Completo':exportArea}_${new Date().toISOString().slice(0,10)}.xlsx`); showToast('Exportado con éxito', 'success');
+                const adicGrupo=exportData.additionalItems.filter(i=>(i.tipoBien==='group'||i.posesion==='Propiedad del Grupo')).map(i=>mapRow({...i,_type:'adic'}));const wb = XLSX.utils.book_new();if(adicGrupo.length)XLSX.utils.book_append_sheet(wb,sheetFor(adicGrupo),'Grupos Parlamentarios'); if(invRows.length) XLSX.utils.book_append_sheet(wb, sheetFor(invRows), "Bienes Inventario"); if(adicCamara.length) XLSX.utils.book_append_sheet(wb, sheetFor(adicCamara), "Adicionales Cámara"); if(adicArrend.length) XLSX.utils.book_append_sheet(wb, sheetFor(adicArrend), "Adic. Arrendamiento"); if(adicPers.length) XLSX.utils.book_append_sheet(wb, sheetFor(adicPers), "Bienes Personales"); InventoryNotes.styleWorkbook(wb,state);await InventoryOutput.excel(wb, `Inventario_${exportArea==='all'?'Completo':exportArea}_${new Date().toISOString().slice(0,10)}.xlsx`); showToast('Exportado con éxito', 'success');
             } catch (error) { showToast('Error al exportar Excel', 'error'); } finally { document.getElementById('loading-overlay').classList.remove('show'); }
         }, 150);
     };
@@ -1628,6 +1632,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             InventoryAdditional.renumber(state);
             await photoDB.setItem('appData','mainState',InventoryData.clean(state));
         }
+        if(InventoryNotes.normalizeState(state))await photoDB.setItem('appData','mainState',InventoryData.clean(state));
         showMain();restoreAdditionalDraft();renderSessionHistory();
     }
     window.InventoryTeam.mount(openWorkspace);
