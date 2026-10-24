@@ -30,3 +30,9 @@ test('sugerencias incluyen una sola variante SIN por campo y conservan marcas no
  const s={inventory:[{MARCA:'SIN MARCA D',MODELO:'SIN MODELO A',SERIE:'SIN SERIE 123'},{MARCA:'DELL'},{MARCA:'LENOVO'},{MARCA:'TRIPLITE'},{MARCA:'dell'}],additionalItems:[],noteDetails:{a:{marca:'SIN MARCA XXXXX'}},archivedNoteDetails:{b:{marca:'SIN MARCA 9'}}};
  assert.deepEqual(notes.suggestions(s,'marca'),['DELL','LENOVO','SIN MARCA','TRIPLITE']);assert.deepEqual(notes.suggestions(s,'modelo'),['SIN MODELO']);assert.deepEqual(notes.suggestions(s,'serie'),['SIN SERIE']);assert.deepEqual(notes.suggestions(s,'marca','LEN'),['LENOVO']);
 });
+
+test('impresión y Excel separan descripción escrita y correcciones de marca, modelo y serie',()=>{
+ const s=sample(),next=notes.save(s,['1'],{description1:'SILLA TAPIZADA',description2:'COLOR NEGRO',marca:'DELL',modelo:'X1',serie:'ABC-123'});
+ const print=notes.printRow(next,'1');assert.equal(print.values['Descripción 1'],'SILLA TAPIZADA');assert.equal(print.values['Descripción 2'],'COLOR NEGRO');assert.equal(print.values.Marca,'DELL');assert.equal(print.values.Modelo,'X1');assert.equal(print.values.Serie,'ABC-123');for(const key of ['Marca','Modelo','Serie'])assert.equal(print.colors[key],'yellow');assert.equal(notes.exported(next,'1')['Descripción 1'],'SILLA TAPIZADA');
+ const archived=operations.moveNotes(next,['1'],true).next;assert.equal(notes.printRow(archived,'1',true).colors['Descripción 1'],'green');assert.equal(notes.printRow(archived,'1',true).colors.Marca,'yellow');
+});
