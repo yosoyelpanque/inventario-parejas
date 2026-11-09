@@ -351,3 +351,5 @@ body:has(#users-tab.active) .sticky-header{padding-bottom:0}
 /* Focus immediately while the note dialog fades in, including on Android. */
 #notes-modal.show{visibility:visible;transition:opacity .2s}
 @media print{.print-notes-table td{white-space:pre-wrap;overflow-wrap:anywhere}.note-print-yellow{background:#ffff00!important;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.note-print-green{background:#92d050!important;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+@media print{.print-notes-table thead{display:table-header-group}.print-notes-table tr{break-inside:avoid;page-break-inside:avoid}}

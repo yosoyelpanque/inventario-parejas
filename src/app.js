@@ -1025,6 +1025,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.toggleArchiveNote=(clave,toArchive)=>moveSelectedNotes([clave],toArchive);
 
 
+    document.getElementById('copy-note-descriptions').onclick=async()=>{
+        const rows=filteredNoteKeys().map(key=>InventoryNotes.get(state,key,window.viewArchivedNotes).description1.replace(/\s*[\r\n]+\s*/g,' '));
+        if(!rows.length)return showToast('No hay notas para copiar','warning');
+        try{await navigator.clipboard.writeText(rows.join('\n'));showToast('Descripción 1 copiada: un renglón por bien','success');}
+        catch{showToast('No se pudo copiar. Usa Descripción 1 del Excel.','error');}
+    };
+
     document.getElementById('print-notas-btn').onclick = async () => {
         const columns=['Clave Única','Descripción original','Descripción 1','Descripción 2','Marca','Modelo','Serie'];
         let html=`<div class="print-header print-notes-header"><img src="logo.png"><div class="print-header-text"><div class="print-header-line">DIRECCIÓN GENERAL DE RECURSOS MATERIALES Y SERVICIOS</div><div class="print-header-line">DIRECCIÓN DE ALMACÉN E INVENTARIOS</div><div class="print-header-line print-area-line">REPORTE DE NOTAS ${window.viewArchivedNotes?'ARCHIVADAS':'ACTIVAS'}</div></div><div class="print-date-abs">Fecha: ${new Date().toLocaleDateString()}</div></div><table class="print-table print-notes-table"><colgroup>${[9,17,23,20,9,10,12].map(width=>`<col style="width:${width}%">`).join('')}</colgroup><thead><tr>${columns.map(c=>`<th>${escapeHTML(c)}</th>`).join('')}</tr></thead><tbody>`;
@@ -1156,6 +1163,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             list.append(button);
         }
     }
+    const reportAreaNames=new Map();
+    const reportAreaInput=document.getElementById('rep-area-name');
+    function reportAreaLabel(area){const edited=reportAreaNames.get(area);if(area==='all')return edited||'TODAS LAS ÁREAS';const prefix=`ÁREA ${area}`;const name=edited?.startsWith(prefix+' ')||edited===prefix?edited.slice(prefix.length).trim():edited||cleanAreaName(area,NOMBRES_AREAS[area]||'');return [prefix,name].filter(Boolean).join(' ');}
+    function showReportAreaName(area){reportAreaInput.dataset.area=area;reportAreaInput.value=reportAreaLabel(area);}
+    reportAreaInput.oninput=()=>{const area=reportAreaInput.dataset.area;if(area)reportAreaNames.set(area,reportAreaInput.value.trim());};
+
     function populateReportFilters() {
         const areas = [...new Set([...state.inventory.map(i=>i.areaOriginal), ...state.resguardantes.map(u=>u.area)])].sort();
         document.getElementById('rep-area-select').innerHTML = '<option value="all">TODAS LAS ÁREAS</option>' + areas.map(a => `<option value="${escapeHTML(a)}">Área ${escapeHTML(a)} - ${escapeHTML(cleanAreaName(a, NOMBRES_AREAS[a]||''))}</option>`).join('');
@@ -1170,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('rep-user-select').innerHTML = '<option value="all">TODOS LOS USUARIOS ASIGNADOS (UN REPORTE POR USUARIO)</option>' + areaOption + users.map(u => `<option value="${escapeHTML(u.name)}">${escapeHTML(u.name)}</option>`).join('');
 
         const r = state.responsablesList.find(resp => resp.area === selArea) || {};
-        document.getElementById('rep-area-name').value = selArea !== 'all' ? `ÁREA ${selArea} ${cleanAreaName(selArea, NOMBRES_AREAS[selArea]||'')}` : '';
+        showReportAreaName(selArea);
         document.getElementById('rep-resp-name').value = r.name || '';
         document.getElementById('rep-resp-title').value = r.title || '';
 
@@ -1196,9 +1209,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const u = state.resguardantes.find(x => x.name === document.getElementById('rep-user-select').value);
         if(u) {
             const r = state.responsablesList.find(resp => resp.area === u.area) || {};
-            document.getElementById('rep-area-name').value = `ÁREA ${u.area} ${cleanAreaName(u.area, NOMBRES_AREAS[u.area]||'')}`; document.getElementById('rep-resp-name').value = r.name || ''; document.getElementById('rep-resp-title').value = r.title || '';
+            showReportAreaName(u.area); document.getElementById('rep-resp-name').value = r.name || ''; document.getElementById('rep-resp-title').value = r.title || '';
         }
-        if(document.getElementById('rep-user-select').value==='__area__'){const area=document.getElementById('rep-area-select').value,r=state.responsablesList.find(resp=>resp.area===area)||{};document.getElementById('rep-area-name').value=area==='all'?'TODAS LAS ÁREAS':`ÁREA ${area} ${cleanAreaName(area,NOMBRES_AREAS[area]||'')}`;document.getElementById('rep-resp-name').value=r.name||'';document.getElementById('rep-resp-title').value=r.title||'';}
+        if(document.getElementById('rep-user-select').value==='__area__'){const area=document.getElementById('rep-area-select').value,r=state.responsablesList.find(resp=>resp.area===area)||{};showReportAreaName(area);document.getElementById('rep-resp-name').value=r.name||'';document.getElementById('rep-resp-title').value=r.title||'';}
         updateReportLocations();
     };
 
@@ -1211,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const targetLoc = document.getElementById('rep-location-select').value;
         const incAdic = document.querySelector('input[name="rep-inc-adic"]:checked').value === 'Si';
         const globalDate = document.getElementById('rep-date').value || new Date().toLocaleDateString();
-        const globalArea = document.getElementById('rep-area-name').value;
+        const globalArea = reportAreaLabel(targetArea);
         const globalRespName = document.getElementById('rep-resp-name').value;
         const globalRespTitle = document.getElementById('rep-resp-title').value;
         const prF1 = document.getElementById('rep-firma-1').checked;
@@ -1247,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="print-header-text">
                         <div class="print-header-line">DIRECCIÓN GENERAL DE RECURSOS MATERIALES Y SERVICIOS</div>
                         <div class="print-header-line">DIRECCIÓN DE ALMACÉN E INVENTARIOS</div>
-                        <div class="print-header-line print-area-line">${escapeHTML(globalArea || `ÁREA ${u.area}`)}</div>
+                        <div class="print-header-line print-area-line">${escapeHTML(reportAreaLabel(u.area))}</div>
                     </div>
                     <div class="print-date-abs">Fecha: ${globalDate}</div>
                 </div>
@@ -1261,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span class="block">DIR. GRAL. DE RECURSOS MATERIALES</span>
                             <span class="block">DIR. DE ALMACÉN E INVENTARIOS</span>
                         </div>
-                        <div class="text-right font-black text-indigo-900">${escapeHTML(globalArea || `ÁREA ${u.area}`)}<br><span class="text-xs text-gray-500 font-bold">Fecha: ${globalDate}</span></div>
+                        <div class="text-right font-black text-indigo-900">${escapeHTML(reportAreaLabel(u.area))}<br><span class="text-xs text-gray-500 font-bold">Fecha: ${globalDate}</span></div>
                     </div>
                     <h2 class="preview-album-title">ÁLBUM FOTOGRÁFICO DE EVIDENCIAS</h2>
                     <p class="text-center font-bold text-xl text-gray-700 bg-gray-100 py-2 rounded-lg mb-6"><i class="fa-solid fa-user-check text-indigo-500 mr-2"></i>USUARIO: ${escapeHTML(u.name)}</p>`;
@@ -1338,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (userItems.length === 0) continue;
 
                 if(consolidated&&targetLoc!=='all')userItems=userItems.filter(i=>i.ubicacionEspecifica===targetLoc);if(!userItems.length)continue;
-                const areaName = consolidatedAll?(globalArea||'TODAS LAS ÁREAS'):targetArea === 'all' ? `ÁREA ${u.area} ${cleanAreaName(u.area, NOMBRES_AREAS[u.area]||'')}` : (globalArea || `ÁREA ${u.area}`);
+                const areaName = consolidatedAll ? globalArea : reportAreaLabel(u.area);
                 const respObj = state.responsablesList.find(r => r.area === u.area) || {}; const respName = targetArea === 'all'&&!consolidatedAll ? (respObj.name||'') : globalRespName; const respTitle = targetArea === 'all'&&!consolidatedAll ? (respObj.title||'') : globalRespTitle;
 
                 officialReports.push({type,items:userItems,area:u.area,areaName:areaName||`ÁREA ${u.area}`,responsible:respName,responsibleTitle:respTitle,user:u.name,location:(()=>{const locations=[...new Set(userItems.map(i=>i.ubicacionEspecifica).filter(Boolean))];return locations[0]?locations[0]+(locations.length>1?' +'+(locations.length-1)+' más':''):'';})()});
