@@ -1131,6 +1131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const generateBtn = document.getElementById('rep-generate-btn');
 
         if (e.target.value === 'resguardo') toggleAdic.classList.remove('hidden'); else toggleAdic.classList.add('hidden');
+        document.getElementById('rep-resguardo-mode-container').hidden=e.target.value!=='resguardo';
         if (e.target.value === 'album') {
             locContainer.classList.remove('hidden');
             firmasContainer.classList.add('hidden');
@@ -1217,6 +1218,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('rep-generate-btn').onclick = async () => {
         const type = document.getElementById('rep-type-select').value;
+        const splitLocations=type==='resguardo'&&document.getElementById('rep-resguardo-mode').value==='location';
         const targetArea = document.getElementById('rep-area-select').value;
         const targetUser = document.getElementById('rep-user-select').value;
         const consolidated = type === 'adicionales' && targetUser === '__area__';
@@ -1354,7 +1356,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const areaName = consolidatedAll ? globalArea : reportAreaLabel(u.area);
                 const respObj = state.responsablesList.find(r => r.area === u.area) || {}; const respName = targetArea === 'all'&&!consolidatedAll ? (respObj.name||'') : globalRespName; const respTitle = targetArea === 'all'&&!consolidatedAll ? (respObj.title||'') : globalRespTitle;
 
-                officialReports.push({type,items:userItems,area:u.area,areaName:areaName||`ÁREA ${u.area}`,responsible:respName,responsibleTitle:respTitle,user:u.name,location:(()=>{const locations=[...new Set(userItems.map(i=>i.ubicacionEspecifica).filter(Boolean))];return locations[0]?locations[0]+(locations.length>1?' +'+(locations.length-1)+' más':''):'';})()});
+                const report={type,items:userItems,area:u.area,areaName:areaName||`ÁREA ${u.area}`,responsible:respName,responsibleTitle:respTitle,user:u.name,location:(()=>{const locations=[...new Set(userItems.map(i=>i.ubicacionEspecifica).filter(Boolean))];return locations[0]?locations[0]+(locations.length>1?' +'+(locations.length-1)+' más':''):'';})()};
+                if(splitLocations){
+                    const groups=new Map();
+                    for(const item of userItems){const location=String(item.ubicacionEspecifica||'').trim();if(!groups.has(location))groups.set(location,[]);groups.get(location).push(item);}
+                    for(const [location,items] of groups)officialReports.push({...report,items,location:location||'SIN UBICACIÓN REGISTRADA'});
+                }else officialReports.push(report);
 
             }
         }
